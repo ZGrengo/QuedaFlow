@@ -1,0 +1,44 @@
+import { Routes } from '@angular/router';
+import { authGuard } from './core/guards/auth.guard';
+
+export const routes: Routes = [
+  {
+    path: 'login',
+    loadComponent: () => import('./features/auth/login/login.component').then(m => m.LoginComponent)
+  },
+  {
+    path: 'create-group',
+    loadComponent: () => import('./features/group/create-group/create-group.component').then(m => m.CreateGroupComponent),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'join-group',
+    loadComponent: () => import('./features/group/join-group/join-group.component').then(m => m.JoinGroupComponent),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'g/:code',
+    loadComponent: () => import('./features/group/group-detail/group-detail.component').then(m => m.GroupDetailComponent),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'g/:code/blocks',
+    loadComponent: () => import('./features/blocks/blocks-manager/blocks-manager.component').then(m => m.BlocksManagerComponent),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'g/:code/planner',
+    loadComponent: () => import('./features/planner/planner-view/planner-view.component').then(m => m.PlannerViewComponent),
+    canActivate: [authGuard]
+  },
+  {
+    path: '',
+    redirectTo: '/login',
+    pathMatch: 'full'
+  },
+  {
+    path: '**',
+    redirectTo: '/login'
+  }
+];
+

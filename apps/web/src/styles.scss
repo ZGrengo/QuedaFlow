@@ -1,0 +1,29 @@
+@import '@angular/material/prebuilt-themes/indigo-pink.css';
+
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: Roboto, "Helvetica Neue", sans-serif;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.slot-green {
+  background-color: #4caf50 !important;
+  color: white;
+}
+
+.slot-yellow {
+  background-color: #ffc107 !important;
+  color: black;
+}
+
+.slot-red {
+  background-color: #f44336 !important;
+  color: white;
+}
+

@@ -1,0 +1,19 @@
+{
+  "name": "quedaflow",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "cd apps/web && npm run start",
+    "build:web": "cd apps/web && npm run build",
+    "test:domain": "cd packages/domain && npm test",
+    "test:watch": "cd packages/domain && npm run test:watch"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0"
+  }
+}
+
