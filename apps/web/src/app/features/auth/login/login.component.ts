@@ -103,10 +103,10 @@ export class LoginComponent {
       email: ['', [Validators.required, Validators.email]]
     });
 
-    // Check if already logged in
+    // Si ya hay sesión (p. ej. llegó desde el magic link), ir al dashboard
     this.authService.getCurrentUser().subscribe(user => {
       if (user) {
-        this.router.navigate(['/']);
+        this.router.navigate(['/dashboard'], { replaceUrl: true });
       }
     });
   }

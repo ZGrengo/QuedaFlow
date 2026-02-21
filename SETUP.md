@@ -65,19 +65,43 @@ supabase db push
 3. Ve a **URL Configuration**
 4. Añade a **Redirect URLs**:
    - `http://localhost:4200/**`
+   - `http://localhost:4200/dashboard` (aquí llega el usuario al hacer clic en el magic link)
    - `http://localhost:4200/login`
    - Tu dominio de producción (cuando lo tengas)
 
 ## Paso 3: Configurar Variables de Entorno
 
-Crea un archivo `.env` en `apps/web/`:
+### Opción A: Usar script automático (Recomendado)
+
+1. Crea un archivo `.env` en `apps/web/`:
 
 ```env
 NG_APP_SUPABASE_URL=https://xxxxx.supabase.co
 NG_APP_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
-**Nota**: En Angular, las variables de entorno deben empezar con `NG_APP_` para ser accesibles.
+2. Ejecuta el script para generar el archivo de entorno:
+
+```bash
+cd apps/web
+npm run set-env
+```
+
+El script leerá tu `.env` y actualizará `src/environments/environment.ts` automáticamente.
+
+**Nota**: El script se ejecuta automáticamente antes de `npm start` gracias al hook `prestart`.
+
+### Opción B: Editar manualmente
+
+Si prefieres, puedes editar directamente `apps/web/src/environments/environment.ts`:
+
+```typescript
+export const environment = {
+  production: false,
+  supabaseUrl: 'https://xxxxx.supabase.co',
+  supabaseAnonKey: 'tu_anon_key_aqui'
+};
+```
 
 ## Paso 4: Ejecutar la Aplicación
 
@@ -101,6 +125,12 @@ La aplicación estará disponible en `http://localhost:4200`
 5. **Ver planner**: Ve a "Ver Planner" para ver los huecos calculados
 
 ## Troubleshooting
+
+### Warnings de npm install
+
+Es normal ver warnings sobre paquetes deprecados al ejecutar `npm install`. Estos vienen de dependencias transitivas (dependencias de dependencias) y no afectan la funcionalidad. Ver `SECURITY.md` para más detalles.
+
+**Puedes continuar con el setup normalmente.**
 
 ### Error: "Missing Supabase environment variables"
 

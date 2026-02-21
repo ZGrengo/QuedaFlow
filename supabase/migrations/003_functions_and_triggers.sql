@@ -1,4 +1,8 @@
--- Function to automatically create profile on user signup
+-- =============================================================================
+-- QuedaFlow - Funciones y triggers
+-- =============================================================================
+
+-- Perfil automático al registrarse
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN

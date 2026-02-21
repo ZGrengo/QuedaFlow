@@ -20,6 +20,7 @@
       "ES2022",
       "dom"
     ],
+    "types": ["node"],
     "paths": {
       "@domain/*": ["../../packages/domain/src/*"]
     }

@@ -1,223 +1,157 @@
--- Enable Row Level Security on all tables
+-- =============================================================================
+-- QuedaFlow - Row Level Security (RLS)
+-- =============================================================================
+-- Todas las tablas con RLS. Para group_members usamos funciones SECURITY DEFINER
+-- (is_member_of_group, is_host_of_group) para evitar recursión infinita en
+-- políticas que leen la misma tabla.
+-- =============================================================================
+
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE groups ENABLE ROW LEVEL SECURITY;
 ALTER TABLE group_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE group_blocked_windows ENABLE ROW LEVEL SECURITY;
 ALTER TABLE availability_blocks ENABLE ROW LEVEL SECURITY;
 
--- ============================================
--- PROFILES POLICIES
--- ============================================
+-- -----------------------------------------------------------------------------
+-- Funciones auxiliares (evitan recursión en políticas de group_members)
+-- -----------------------------------------------------------------------------
 
--- Users can view their own profile
+-- True si el usuario es miembro del grupo (lectura sin RLS)
+CREATE OR REPLACE FUNCTION public.is_member_of_group(p_group_id uuid, p_user_id uuid)
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.group_members
+    WHERE group_id = p_group_id AND user_id = p_user_id
+  );
+$$;
+
+-- True si el usuario es host del grupo (según tabla groups)
+CREATE OR REPLACE FUNCTION public.is_host_of_group(p_group_id uuid, p_user_id uuid)
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.groups
+    WHERE id = p_group_id AND host_user_id = p_user_id
+  );
+$$;
+
+-- =============================================================================
+-- PROFILES
+-- =============================================================================
+
 CREATE POLICY "Users can view own profile"
   ON profiles FOR SELECT
   USING (auth.uid() = id);
 
--- Users can insert their own profile
 CREATE POLICY "Users can insert own profile"
   ON profiles FOR INSERT
   WITH CHECK (auth.uid() = id);
 
--- Users can update their own profile
 CREATE POLICY "Users can update own profile"
   ON profiles FOR UPDATE
   USING (auth.uid() = id);
 
--- ============================================
--- GROUPS POLICIES
--- ============================================
+-- =============================================================================
+-- GROUPS
+-- =============================================================================
 
--- Users can view groups they are members of
 CREATE POLICY "Users can view groups they belong to"
   ON groups FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM group_members
-      WHERE group_members.group_id = groups.id
-      AND group_members.user_id = auth.uid()
-    )
-  );
+  USING (public.is_member_of_group(id, auth.uid()));
 
--- Users can create groups (they become host)
 CREATE POLICY "Users can create groups"
   ON groups FOR INSERT
   WITH CHECK (auth.uid() = host_user_id);
 
--- Only host can update group settings
 CREATE POLICY "Only host can update group settings"
   ON groups FOR UPDATE
   USING (
     auth.uid() = host_user_id
-    AND EXISTS (
-      SELECT 1 FROM group_members
-      WHERE group_members.group_id = groups.id
-      AND group_members.user_id = auth.uid()
-      AND group_members.role = 'host'
-    )
+    AND public.is_member_of_group(id, auth.uid())
+    AND public.is_host_of_group(id, auth.uid())
   );
 
--- ============================================
--- GROUP_MEMBERS POLICIES
--- ============================================
+-- =============================================================================
+-- GROUP_MEMBERS (políticas sin auto-lectura para evitar recursión)
+-- =============================================================================
 
--- Users can view members of groups they belong to
 CREATE POLICY "Users can view members of their groups"
   ON group_members FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM group_members gm
-      WHERE gm.group_id = group_members.group_id
-      AND gm.user_id = auth.uid()
-    )
-  );
+  USING (public.is_member_of_group(group_id, auth.uid()));
 
--- Users can insert themselves as members (with role 'member')
--- Host can insert any member
 CREATE POLICY "Users can join groups or host can add members"
   ON group_members FOR INSERT
   WITH CHECK (
-    -- User joining themselves
     (auth.uid() = user_id AND role = 'member')
     OR
-    -- Host adding members
-    EXISTS (
-      SELECT 1 FROM groups g
-      JOIN group_members gm ON gm.group_id = g.id
-      WHERE g.id = group_members.group_id
-      AND gm.user_id = auth.uid()
-      AND gm.role = 'host'
-    )
+    (auth.uid() = user_id AND role = 'host' AND public.is_host_of_group(group_id, auth.uid()))
   );
 
--- Only host can update member roles
 CREATE POLICY "Only host can update member roles"
   ON group_members FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM group_members gm
-      WHERE gm.group_id = group_members.group_id
-      AND gm.user_id = auth.uid()
-      AND gm.role = 'host'
-    )
-  );
+  USING (public.is_host_of_group(group_id, auth.uid()));
 
--- Users can delete themselves, host can delete any member
 CREATE POLICY "Users can leave or host can remove members"
   ON group_members FOR DELETE
   USING (
     auth.uid() = user_id
-    OR
-    EXISTS (
-      SELECT 1 FROM group_members gm
-      WHERE gm.group_id = group_members.group_id
-      AND gm.user_id = auth.uid()
-      AND gm.role = 'host'
-    )
+    OR public.is_host_of_group(group_id, auth.uid())
   );
 
--- ============================================
--- GROUP_BLOCKED_WINDOWS POLICIES
--- ============================================
+-- =============================================================================
+-- GROUP_BLOCKED_WINDOWS
+-- =============================================================================
 
--- Users can view blocked windows of groups they belong to
 CREATE POLICY "Users can view blocked windows of their groups"
   ON group_blocked_windows FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM group_members
-      WHERE group_members.group_id = group_blocked_windows.group_id
-      AND group_members.user_id = auth.uid()
-    )
-  );
+  USING (public.is_member_of_group(group_id, auth.uid()));
 
--- Only host can insert blocked windows
 CREATE POLICY "Only host can insert blocked windows"
   ON group_blocked_windows FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM groups g
-      JOIN group_members gm ON gm.group_id = g.id
-      WHERE g.id = group_blocked_windows.group_id
-      AND gm.user_id = auth.uid()
-      AND gm.role = 'host'
-    )
-  );
+  WITH CHECK (public.is_host_of_group(group_id, auth.uid()));
 
--- Only host can update blocked windows
 CREATE POLICY "Only host can update blocked windows"
   ON group_blocked_windows FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM groups g
-      JOIN group_members gm ON gm.group_id = g.id
-      WHERE g.id = group_blocked_windows.group_id
-      AND gm.user_id = auth.uid()
-      AND gm.role = 'host'
-    )
-  );
+  USING (public.is_host_of_group(group_id, auth.uid()));
 
--- Only host can delete blocked windows
 CREATE POLICY "Only host can delete blocked windows"
   ON group_blocked_windows FOR DELETE
-  USING (
-    EXISTS (
-      SELECT 1 FROM groups g
-      JOIN group_members gm ON gm.group_id = g.id
-      WHERE g.id = group_blocked_windows.group_id
-      AND gm.user_id = auth.uid()
-      AND gm.role = 'host'
-    )
-  );
+  USING (public.is_host_of_group(group_id, auth.uid()));
 
--- ============================================
--- AVAILABILITY_BLOCKS POLICIES
--- ============================================
+-- =============================================================================
+-- AVAILABILITY_BLOCKS
+-- =============================================================================
 
--- Users can view availability blocks of groups they belong to
 CREATE POLICY "Users can view availability blocks of their groups"
   ON availability_blocks FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM group_members
-      WHERE group_members.group_id = availability_blocks.group_id
-      AND group_members.user_id = auth.uid()
-    )
-  );
+  USING (public.is_member_of_group(group_id, auth.uid()));
 
--- Users can insert their own availability blocks
 CREATE POLICY "Users can insert own availability blocks"
   ON availability_blocks FOR INSERT
   WITH CHECK (
     auth.uid() = user_id
-    AND EXISTS (
-      SELECT 1 FROM group_members
-      WHERE group_members.group_id = availability_blocks.group_id
-      AND group_members.user_id = auth.uid()
-    )
+    AND public.is_member_of_group(group_id, auth.uid())
   );
 
--- Users can update their own availability blocks
 CREATE POLICY "Users can update own availability blocks"
   ON availability_blocks FOR UPDATE
   USING (
     auth.uid() = user_id
-    AND EXISTS (
-      SELECT 1 FROM group_members
-      WHERE group_members.group_id = availability_blocks.group_id
-      AND group_members.user_id = auth.uid()
-    )
+    AND public.is_member_of_group(group_id, auth.uid())
   );
 
--- Users can delete their own availability blocks
 CREATE POLICY "Users can delete own availability blocks"
   ON availability_blocks FOR DELETE
   USING (
     auth.uid() = user_id
-    AND EXISTS (
-      SELECT 1 FROM group_members
-      WHERE group_members.group_id = availability_blocks.group_id
-      AND group_members.user_id = auth.uid()
-    )
+    AND public.is_member_of_group(group_id, auth.uid())
   );
-

@@ -271,6 +271,12 @@ supabase/
 
 ## Troubleshooting
 
+### Warnings de npm install
+
+Es normal ver warnings sobre paquetes deprecados y vulnerabilidades al ejecutar `npm install`. Estos vienen principalmente de dependencias transitivas de Angular CLI y no afectan la funcionalidad. Ver `SECURITY.md` para más detalles.
+
+**Puedes continuar con el desarrollo normalmente.**
+
 ### Error: Missing Supabase environment variables
 - Verifica que `.env` existe en `apps/web/`
 - Reinicia el servidor de desarrollo

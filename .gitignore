@@ -15,6 +15,8 @@ build/
 .env
 .env.local
 .env.*.local
+apps/web/src/environments/environment.ts
+apps/web/src/environments/environment.local.ts
 
 # IDE
 .vscode/
@@ -33,4 +35,8 @@ Thumbs.db
 # Supabase
 supabase/.branches
 supabase/.temp
+
+
+# MD Files
+checklist.md
 

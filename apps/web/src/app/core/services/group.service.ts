@@ -42,7 +42,10 @@ export class GroupService {
 
         // Generate code using RPC or fallback
         return from(
-          this.supabase.rpc('generate_group_code').catch(() => ({ data: null }))
+          this.supabase.rpc('generate_group_code').then(
+            (result) => result,
+            () => ({ data: null, error: null })
+          )
         ).pipe(
           switchMap(({ data: code }) => {
             const finalCode = code || this.generateRandomCode();
@@ -52,8 +55,8 @@ export class GroupService {
                 .from('groups')
                 .insert({
                   name: dto.name,
-                  code: finalCode,
-                  host_user_id: user.id
+                  code: finalCode
+                  // host_user_id is set by DB default (auth.uid()) so RLS policy passes
                 })
                 .select()
                 .single()

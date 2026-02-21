@@ -29,7 +29,7 @@ export class AuthService {
     const { error } = await this.supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/login`
+        emailRedirectTo: `${window.location.origin}/dashboard`
       }
     });
 

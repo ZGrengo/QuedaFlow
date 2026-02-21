@@ -38,11 +38,9 @@ import { AuthService } from '../../../core/services/auth.service';
             </button>
           </div>
           <div class="quick-actions" style="margin-top: 16px;">
-            <button mat-stroked-button routerLink="/create-group">
-              Crear Nuevo Grupo
-            </button>
-            <button mat-stroked-button routerLink="/join-group">
-              Unirse a Grupo
+            <button mat-stroked-button routerLink="/dashboard">
+              <mat-icon>home</mat-icon>
+              Volver al inicio
             </button>
           </div>
         </mat-card-content>

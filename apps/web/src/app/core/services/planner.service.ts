@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import { Observable, combineLatest } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
-import { GroupService, GroupMember } from './group.service';
+import { GroupService } from './group.service';
+import { GroupMember as DomainGroupMember } from '@domain/index';
 import { BlocksService } from './blocks.service';
 import { Group } from './group.service';
 import { computeSlots, rankSlots, ComputedSlot, AvailabilityBlock, BlockedWindow } from '@domain/index';
@@ -33,7 +34,7 @@ export class PlannerService {
     )).pipe(
       map(({ group, members, blocks, blockedWindows }) => {
         // Map to domain models
-        const domainMembers: GroupMember[] = members.map(m => ({
+        const domainMembers: DomainGroupMember[] = members.map(m => ({
           id: m.id,
           group_id: m.group_id,
           user_id: m.user_id,

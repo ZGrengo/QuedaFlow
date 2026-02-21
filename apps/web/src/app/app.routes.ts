@@ -7,6 +7,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/login/login.component').then(m => m.LoginComponent)
   },
   {
+    path: 'dashboard',
+    loadComponent: () => import('./features/dashboard/dashboard/dashboard.component').then(m => m.DashboardComponent),
+    canActivate: [authGuard]
+  },
+  {
     path: 'create-group',
     loadComponent: () => import('./features/group/create-group/create-group.component').then(m => m.CreateGroupComponent),
     canActivate: [authGuard]
@@ -33,8 +38,8 @@ export const routes: Routes = [
   },
   {
     path: '',
-    redirectTo: '/login',
-    pathMatch: 'full'
+    pathMatch: 'full',
+    loadComponent: () => import('./core/guards/redirect-guard.component').then(m => m.RedirectGuardComponent)
   },
   {
     path: '**',
