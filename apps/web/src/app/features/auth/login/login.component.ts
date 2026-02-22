@@ -59,6 +59,7 @@ import { AuthService } from '../../../core/services/auth.service';
       align-items: center;
       min-height: 100vh;
       padding: 16px;
+      box-sizing: border-box;
     }
 
     .login-card {

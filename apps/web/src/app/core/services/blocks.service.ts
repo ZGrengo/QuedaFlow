@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { getSupabaseClient } from '../config/supabase.config';
 import { Observable, from } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { map, switchMap } from 'rxjs/operators';
 import { AvailabilityBlock, applyBuffer, mergeOverlappingBlocks, splitMidnightBlock } from '@domain/index';
 
 export interface CreateBlockDto {
@@ -19,22 +19,17 @@ export class BlocksService {
   private supabase = getSupabaseClient();
 
   addBlock(dto: CreateBlockDto, bufferMin: number = 20): Observable<AvailabilityBlock> {
-    let block: AvailabilityBlock = {
-      ...dto,
-      user_id: '', // Will be set by RLS
-      source: 'MANUAL'
-    };
-
-    // Apply buffer to WORK blocks
-    if (block.type === 'WORK') {
-      block = applyBuffer(block, bufferMin);
-    }
-
-    // Handle midnight crossing
-    const blocksToInsert = splitMidnightBlock(block);
-
-    // Insert blocks
-    return from(
+    return from(this.supabase.auth.getUser()).pipe(
+      switchMap(({ data: { user }, error: userError }) => {
+        if (userError || !user) throw new Error('Debes iniciar sesión para añadir bloques');
+        let block: AvailabilityBlock = {
+          ...dto,
+          user_id: user.id,
+          source: 'MANUAL'
+        };
+        if (block.type === 'WORK') block = applyBuffer(block, bufferMin);
+        const blocksToInsert = splitMidnightBlock(block);
+        return from(
       Promise.all(
         blocksToInsert.map(b =>
           this.supabase
@@ -44,14 +39,14 @@ export class BlocksService {
             .single()
         )
       )
-    ).pipe(
-      map(results => {
-        const errors = results.filter(r => r.error);
-        if (errors.length > 0) {
-          throw errors[0].error;
-        }
-        // Return first block (or merged if needed)
-        return results[0].data as AvailabilityBlock;
+        );
+      }),
+      map((results: Array<{ data: AvailabilityBlock | null; error: unknown }>) => {
+        const err = results.find(r => r.error);
+        if (err?.error) throw err.error;
+        const data = results[0]?.data;
+        if (!data) throw new Error('Error al crear el bloque');
+        return data;
       })
     );
   }

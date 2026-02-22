@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, NgZone } from '@angular/core';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { getSupabaseClient } from '../config/supabase.config';
@@ -9,19 +9,25 @@ import { User } from '@supabase/supabase-js';
 })
 export class AuthService {
   private router = inject(Router);
+  private ngZone = inject(NgZone);
   private supabase = getSupabaseClient();
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   public authState$ = this.currentUserSubject.asObservable();
 
   constructor() {
-    // Listen to auth state changes
+    // Supabase callbacks can run outside Angular zone (p. ej. al volver de otra pestaña).
+    // Ejecutarlos dentro de NgZone evita "Navigation triggered outside Angular zone"
+    // y que la vista quede desincronizada o los botones dejen de funcionar.
     this.supabase.auth.onAuthStateChange((event, session) => {
-      this.currentUserSubject.next(session?.user ?? null);
+      this.ngZone.run(() => {
+        this.currentUserSubject.next(session?.user ?? null);
+      });
     });
 
-    // Get initial session
     this.supabase.auth.getSession().then(({ data }) => {
-      this.currentUserSubject.next(data.session?.user ?? null);
+      this.ngZone.run(() => {
+        this.currentUserSubject.next(data.session?.user ?? null);
+      });
     });
   }
 
@@ -43,7 +49,10 @@ export class AuthService {
     if (error) {
       throw error;
     }
-    this.router.navigate(['/login']);
+    this.ngZone.run(() => {
+      this.currentUserSubject.next(null);
+      this.router.navigate(['/login'], { replaceUrl: true });
+    });
   }
 
   getCurrentUser(): Observable<User | null> {

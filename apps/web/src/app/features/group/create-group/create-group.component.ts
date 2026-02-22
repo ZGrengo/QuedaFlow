@@ -39,9 +39,14 @@ import { GroupService } from '../../../core/services/group.service';
               {{ message }}
             </div>
 
-            <button mat-raised-button color="primary" type="submit" [disabled]="createForm.invalid || loading" class="full-width">
-              {{ loading ? 'Creando...' : 'Crear Grupo' }}
-            </button>
+            <div class="actions">
+              <button mat-button type="button" (click)="onCancel()">
+                Cancelar
+              </button>
+              <button mat-raised-button color="primary" type="submit" [disabled]="createForm.invalid || loading">
+                {{ loading ? 'Creando...' : 'Crear Grupo' }}
+              </button>
+            </div>
           </form>
         </mat-card-content>
       </mat-card>
@@ -54,6 +59,7 @@ import { GroupService } from '../../../core/services/group.service';
       align-items: center;
       min-height: 100vh;
       padding: 16px;
+      box-sizing: border-box;
     }
 
     .login-card, mat-card {
@@ -63,6 +69,13 @@ import { GroupService } from '../../../core/services/group.service';
 
     .full-width {
       width: 100%;
+    }
+
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 16px;
     }
 
     .message {
@@ -93,6 +106,10 @@ export class CreateGroupComponent {
     this.createForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(3)]]
     });
+  }
+
+  onCancel(): void {
+    this.router.navigate(['/dashboard']);
   }
 
   onSubmit() {

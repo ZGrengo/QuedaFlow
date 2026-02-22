@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -22,6 +22,7 @@ import { minToHhmm, hhmmToMin } from '@domain/index';
   standalone: true,
   imports: [
     CommonModule,
+    RouterModule,
     ReactiveFormsModule,
     MatCardModule,
     MatFormFieldModule,
@@ -35,6 +36,12 @@ import { minToHhmm, hhmmToMin } from '@domain/index';
   ],
   template: `
     <div class="container">
+      <div class="nav-back">
+        <button mat-stroked-button [routerLink]="['/g', code]">
+          <mat-icon>arrow_back</mat-icon>
+          Volver al grupo
+        </button>
+      </div>
       <mat-card>
         <mat-card-header>
           <mat-card-title>Gestionar Bloques de Disponibilidad</mat-card-title>
@@ -107,6 +114,10 @@ import { minToHhmm, hhmmToMin } from '@domain/index';
       padding: 16px;
     }
 
+    .nav-back {
+      margin-bottom: 16px;
+    }
+
     .form-row {
       display: flex;
       gap: 16px;
@@ -145,6 +156,7 @@ export class BlocksManagerComponent implements OnInit {
   blockForm: FormGroup;
   myBlocks: AvailabilityBlock[] = [];
   loading = false;
+  code = '';
   groupId = '';
   userId = '';
   preferredCount = 0;
@@ -172,6 +184,7 @@ export class BlocksManagerComponent implements OnInit {
       this.router.navigate(['/login']);
       return;
     }
+    this.code = code;
 
     this.groupService.getGroup(code).subscribe({
       next: (group) => {

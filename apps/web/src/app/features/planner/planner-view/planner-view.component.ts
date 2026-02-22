@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
+import { RouterModule } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -14,6 +15,7 @@ import { minToHhmm } from '@domain/index';
   standalone: true,
   imports: [
     CommonModule,
+    RouterModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
@@ -21,6 +23,12 @@ import { minToHhmm } from '@domain/index';
   ],
   template: `
     <div class="container">
+      <div class="nav-back">
+        <button mat-stroked-button [routerLink]="['/g', code]">
+          <mat-icon>arrow_back</mat-icon>
+          Volver al grupo
+        </button>
+      </div>
       <mat-card>
         <mat-card-header>
           <mat-card-title>Mejores Huecos Disponibles</mat-card-title>
@@ -56,6 +64,10 @@ import { minToHhmm } from '@domain/index';
   styles: [`
     .container {
       padding: 16px;
+    }
+
+    .nav-back {
+      margin-bottom: 16px;
     }
 
     .loading, .error, .empty {
@@ -105,6 +117,7 @@ import { minToHhmm } from '@domain/index';
   `]
 })
 export class PlannerViewComponent implements OnInit {
+  code = '';
   topSlots: ComputedSlot[] = [];
   loading = true;
   error = '';
@@ -122,6 +135,7 @@ export class PlannerViewComponent implements OnInit {
       this.router.navigate(['/login']);
       return;
     }
+    this.code = code;
 
     this.plannerService.getTopSlots(code, 20).subscribe({
       next: (slots) => {

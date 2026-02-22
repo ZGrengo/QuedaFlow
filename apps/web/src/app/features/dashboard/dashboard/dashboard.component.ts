@@ -10,7 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../../../core/services/auth.service';
-import { GroupService } from '../../../core/services/group.service';
+import { GroupService, Group } from '../../../core/services/group.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -83,6 +83,24 @@ import { GroupService } from '../../../core/services/group.service';
             </mat-card-content>
           </mat-card>
         </div>
+
+        <section class="active-groups">
+          <h2 class="section-title">
+            <mat-icon>groups</mat-icon>
+            Grupos activos
+          </h2>
+          <p *ngIf="myGroupsLoading" class="loading-groups">Cargando grupos...</p>
+          <div *ngIf="!myGroupsLoading && myGroups.length === 0" class="no-groups">
+            No tienes grupos aún. Crea uno o únete con un código arriba.
+          </div>
+          <div *ngIf="!myGroupsLoading && myGroups.length > 0" class="groups-list">
+            <a *ngFor="let group of myGroups" [routerLink]="['/g', group.code]" class="group-item">
+              <span class="group-name">{{ group.name }}</span>
+              <span class="group-code">Código: {{ group.code }}</span>
+              <mat-icon class="group-arrow">arrow_forward</mat-icon>
+            </a>
+          </div>
+        </section>
       </div>
     </div>
   `,
@@ -173,6 +191,70 @@ import { GroupService } from '../../../core/services/group.service';
       background: #ffebee;
       color: #c62828;
     }
+
+    .active-groups {
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 16px 0;
+      font-size: 1.25rem;
+    }
+
+    .section-title mat-icon {
+      font-size: 28px;
+      width: 28px;
+      height: 28px;
+    }
+
+    .loading-groups,
+    .no-groups {
+      color: #666;
+      margin: 0;
+    }
+
+    .groups-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .group-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      background: #fff;
+      border-radius: 8px;
+      text-decoration: none;
+      color: inherit;
+      border: 1px solid #e0e0e0;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .group-item:hover {
+      background: #f5f5f5;
+      border-color: #bdbdbd;
+    }
+
+    .group-name {
+      font-weight: 500;
+      flex: 1;
+    }
+
+    .group-code {
+      font-size: 0.875rem;
+      color: #666;
+    }
+
+    .group-arrow {
+      color: #666;
+    }
   `]
 })
 export class DashboardComponent {
@@ -181,6 +263,8 @@ export class DashboardComponent {
   joinLoading = false;
   joinMessage = '';
   joinError = false;
+  myGroups: Group[] = [];
+  myGroupsLoading = true;
 
   constructor(
     private authService: AuthService,
@@ -194,6 +278,16 @@ export class DashboardComponent {
 
     this.authService.getCurrentUser().subscribe(user => {
       this.userEmail = user?.email ?? '';
+    });
+
+    this.groupService.getMyGroups().subscribe({
+      next: (groups) => {
+        this.myGroups = groups;
+        this.myGroupsLoading = false;
+      },
+      error: () => {
+        this.myGroupsLoading = false;
+      }
     });
   }
 
@@ -223,6 +317,9 @@ export class DashboardComponent {
   }
 
   signOut(): void {
-    this.authService.signOut();
+    this.authService.signOut().catch(() => {
+      // Aun si falla Supabase, redirigir a login para no dejar sesión colgada
+      this.router.navigate(['/login'], { replaceUrl: true });
+    });
   }
 }

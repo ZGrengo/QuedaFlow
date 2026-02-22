@@ -33,37 +33,9 @@ export class GroupService {
   private supabase = getSupabaseClient();
 
   createGroup(dto: CreateGroupDto): Observable<Group> {
-    // Get current user
-    return from(this.supabase.auth.getUser()).pipe(
-      switchMap(({ data: { user } }) => {
-        if (!user) {
-          throw new Error('User must be authenticated');
-        }
-
-        // Generate code using RPC or fallback
-        return from(
-          this.supabase.rpc('generate_group_code').then(
-            (result) => result,
-            () => ({ data: null, error: null })
-          )
-        ).pipe(
-          switchMap(({ data: code }) => {
-            const finalCode = code || this.generateRandomCode();
-            
-            return from(
-              this.supabase
-                .from('groups')
-                .insert({
-                  name: dto.name,
-                  code: finalCode
-                  // host_user_id is set by DB default (auth.uid()) so RLS policy passes
-                })
-                .select()
-                .single()
-            );
-          })
-        );
-      }),
+    return from(
+      this.supabase.rpc('create_group', { p_name: dto.name })
+    ).pipe(
       map(({ data, error }) => {
         if (error) throw error;
         return data as Group;
@@ -119,6 +91,21 @@ export class GroupService {
       });
 
     return groupData as Group;
+  }
+
+  /** Grupos en los que el usuario actual es miembro (RLS filtra por is_member_of_group). */
+  getMyGroups(): Observable<Group[]> {
+    return from(
+      this.supabase
+        .from('groups')
+        .select('*')
+        .order('created_at', { ascending: false })
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) throw error;
+        return (data || []) as Group[];
+      })
+    );
   }
 
   getGroup(code: string): Observable<Group> {

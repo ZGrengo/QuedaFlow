@@ -31,7 +31,12 @@ export class RedirectGuardComponent implements OnInit {
   ngOnInit(): void {
     this.authService.getCurrentUser().pipe(take(1)).subscribe(user => {
       if (user) {
-        this.router.navigate(['/dashboard'], { replaceUrl: true });
+        const lastUrl = sessionStorage.getItem('qf_last_url');
+        if (lastUrl && lastUrl !== '/' && lastUrl !== '/dashboard') {
+          this.router.navigateByUrl(lastUrl, { replaceUrl: true });
+        } else {
+          this.router.navigate(['/dashboard'], { replaceUrl: true });
+        }
       } else {
         this.router.navigate(['/login'], { replaceUrl: true });
       }
