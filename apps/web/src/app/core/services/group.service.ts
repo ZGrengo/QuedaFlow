@@ -54,43 +54,21 @@ export class GroupService {
 
   joinGroupByCode(code: string): Observable<Group> {
     return from(
-      this.joinGroupByCodeAsync(code)
+      this.supabase.rpc('join_group_by_code', { p_code: code.trim() })
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) throw error;
+        return data as Group;
+      })
     );
   }
 
   async joinGroupByCodeAsync(code: string): Promise<Group> {
-    // Get group
-    const { data: groupData, error: groupError } = await this.supabase
-      .from('groups')
-      .select('*')
-      .eq('code', code.toUpperCase())
-      .single();
-
-    if (groupError) throw groupError;
-
-    // Get current user
-    const { data: { user } } = await this.supabase.auth.getUser();
-    if (!user) {
-      throw new Error('User must be authenticated');
-    }
-
-    // Add user as member (ignore if already exists)
-    await this.supabase
-      .from('group_members')
-      .insert({
-        group_id: groupData.id,
-        user_id: user.id,
-        role: 'member'
-      })
-      .select()
-      .then(({ error }) => {
-        // Ignore error if user is already a member
-        if (error && !error.message.includes('duplicate')) {
-          console.warn('Error joining group:', error);
-        }
-      });
-
-    return groupData as Group;
+    const { data, error } = await this.supabase.rpc('join_group_by_code', {
+      p_code: code.trim()
+    });
+    if (error) throw error;
+    return data as Group;
   }
 
   /** Grupos en los que el usuario actual es miembro (RLS filtra por is_member_of_group). */

@@ -37,8 +37,8 @@ function getNextDay(date: string): string {
 }
 
 /**
- * Applies buffer before WORK blocks
- * @param block - WORK block
+ * Applies buffer before WORK blocks (extends busy period before work start, e.g. commute time)
+ * @param block - WORK block (hours when user is busy at work)
  * @param bufferMin - Buffer in minutes
  * @returns Block with buffer applied (start_min adjusted)
  */

@@ -161,8 +161,10 @@ groups (1:N)
 - RLS: usuarios ven solo miembros de sus grupos
 
 **availability_blocks**
-- Bloques de disponibilidad por usuario
-- Tipos: WORK, UNAVAILABLE, PREFERRED
+- Bloques de ocupación por usuario (indican cuándo NO está disponible)
+- WORK: horas de trabajo (ocupado). Futuro: importación desde imágenes de horarios
+- UNAVAILABLE: otros momentos ocupados (reuniones, citas, etc.)
+- PREFERRED: horas libres que el usuario prefiere para quedar
 - Validación: máx 3 PREFERRED por usuario/grupo
 
 **group_blocked_windows**

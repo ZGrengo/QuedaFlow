@@ -67,45 +67,35 @@ export function computeSlots(params: ComputeSlotsParams): ComputedSlot[] {
       }
 
       // Count available members
+      // Semantics: WORK = busy (not available), UNAVAILABLE = busy, PREFERRED = available + preferred
+      // Default: no blocks = available. Member is unavailable only when in WORK or UNAVAILABLE.
       const availableMembers: string[] = [];
       let preferredCount = 0;
 
       for (const member of members) {
         const memberBlocks = dayBlocks.filter(b => b.user_id === member.user_id);
 
-        let isAvailable = false;
+        let isAvailable = true; // Default: available (no blocks = free)
         let isPreferred = false;
 
         for (const block of memberBlocks) {
-          // Handle blocks that cross midnight
-          if (block.start_min >= block.end_min) {
-            const splitBlocks = splitMidnightBlock(block);
-            for (const splitBlock of splitBlocks) {
-              if (splitBlock.date === slotDate && overlaps(start, end, splitBlock.start_min, splitBlock.end_min)) {
-                if (block.type === 'WORK' || block.type === 'PREFERRED') {
-                  isAvailable = true;
-                  if (block.type === 'PREFERRED') {
-                    isPreferred = true;
-                  }
-                } else if (block.type === 'UNAVAILABLE') {
-                  isAvailable = false;
-                  isPreferred = false;
-                  break; // UNAVAILABLE takes precedence
-                }
-              }
+          const blockOverlaps = (() => {
+            if (block.start_min >= block.end_min) {
+              const splitBlocks = splitMidnightBlock(block);
+              return splitBlocks.some(
+                sb => sb.date === slotDate && overlaps(start, end, sb.start_min, sb.end_min)
+              );
             }
-          } else {
-            if (overlaps(start, end, block.start_min, block.end_min)) {
-              if (block.type === 'WORK' || block.type === 'PREFERRED') {
-                isAvailable = true;
-                if (block.type === 'PREFERRED') {
-                  isPreferred = true;
-                }
-              } else if (block.type === 'UNAVAILABLE') {
-                isAvailable = false;
-                isPreferred = false;
-                break; // UNAVAILABLE takes precedence
-              }
+            return overlaps(start, end, block.start_min, block.end_min);
+          })();
+
+          if (blockOverlaps) {
+            if (block.type === 'WORK' || block.type === 'UNAVAILABLE') {
+              isAvailable = false;
+              isPreferred = false;
+              break;
+            } else if (block.type === 'PREFERRED') {
+              isPreferred = true; // Available and preferred
             }
           }
         }

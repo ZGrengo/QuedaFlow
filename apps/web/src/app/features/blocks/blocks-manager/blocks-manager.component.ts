@@ -44,7 +44,8 @@ import { minToHhmm, hhmmToMin } from '@domain/index';
       </div>
       <mat-card>
         <mat-card-header>
-          <mat-card-title>Gestionar Bloques de Disponibilidad</mat-card-title>
+          <mat-card-title>Gestionar Bloques de Ocupación</mat-card-title>
+          <mat-card-subtitle>Añade las horas en las que trabajas (WORK) y otros momentos en los que no estás disponible (UNAVAILABLE). Los huecos libres se calcularán automáticamente.</mat-card-subtitle>
         </mat-card-header>
         <mat-card-content>
           <form [formGroup]="blockForm" (ngSubmit)="onSubmit()">
@@ -52,9 +53,9 @@ import { minToHhmm, hhmmToMin } from '@domain/index';
               <mat-form-field appearance="outline">
                 <mat-label>Tipo</mat-label>
                 <mat-select formControlName="type" required>
-                  <mat-option value="WORK">WORK</mat-option>
-                  <mat-option value="UNAVAILABLE">UNAVAILABLE</mat-option>
-                  <mat-option value="PREFERRED">PREFERRED</mat-option>
+                  <mat-option value="WORK">Trabajo (horas ocupadas)</mat-option>
+                  <mat-option value="UNAVAILABLE">No disponible (reuniones, citas, etc.)</mat-option>
+                  <mat-option value="PREFERRED">Preferido (horas libres que prefieres)</mat-option>
                 </mat-select>
               </mat-form-field>
 
