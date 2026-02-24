@@ -5,7 +5,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
-import { Router, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
@@ -98,16 +98,19 @@ export class LoginComponent {
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute
   ) {
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]]
     });
 
-    // Si ya hay sesión (p. ej. llegó desde el magic link), ir al dashboard
+    // Si ya hay sesión (p. ej. llegó desde el magic link), ir a returnUrl o dashboard
     this.authService.getCurrentUser().subscribe(user => {
       if (user) {
-        this.router.navigate(['/dashboard'], { replaceUrl: true });
+        const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+        const target = returnUrl && returnUrl.startsWith('/') ? returnUrl : '/dashboard';
+        this.router.navigateByUrl(target, { replaceUrl: true });
       }
     });
   }
@@ -120,7 +123,8 @@ export class LoginComponent {
     this.isError = false;
 
     try {
-      await this.authService.signInWithMagicLink(this.loginForm.value.email);
+      const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') ?? undefined;
+      await this.authService.signInWithMagicLink(this.loginForm.value.email, returnUrl);
       this.message = '¡Revisa tu email! Te hemos enviado un magic link para iniciar sesión.';
       this.isError = false;
     } catch (error: any) {

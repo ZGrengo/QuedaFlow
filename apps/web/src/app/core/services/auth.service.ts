@@ -31,11 +31,13 @@ export class AuthService {
     });
   }
 
-  async signInWithMagicLink(email: string): Promise<void> {
+  async signInWithMagicLink(email: string, redirectPath?: string): Promise<void> {
+    const origin = window.location.origin;
+    const path = redirectPath && redirectPath.startsWith('/') ? redirectPath : '/dashboard';
     const { error } = await this.supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`
+        emailRedirectTo: `${origin}${path}`
       }
     });
 

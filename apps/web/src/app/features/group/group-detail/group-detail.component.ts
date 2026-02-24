@@ -5,6 +5,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { GroupService, Group } from '../../../core/services/group.service';
 import { AuthService } from '../../../core/services/auth.service';
 
@@ -17,7 +18,8 @@ import { AuthService } from '../../../core/services/auth.service';
     MatCardModule,
     MatButtonModule,
     MatIconModule,
-    MatChipsModule
+    MatChipsModule,
+    MatSnackBarModule
   ],
   template: `
     <div class="container">
@@ -39,6 +41,10 @@ import { AuthService } from '../../../core/services/auth.service';
             <button *ngIf="isHost" mat-stroked-button routerLink="/g/{{ group.code }}/settings">
               <mat-icon>settings</mat-icon>
               Configuración
+            </button>
+            <button *ngIf="isHost" mat-stroked-button (click)="copyInviteLink()">
+              <mat-icon>link</mat-icon>
+              Copiar enlace de invitación
             </button>
           </div>
           <div class="quick-actions" style="margin-top: 16px;">
@@ -91,8 +97,19 @@ export class GroupDetailComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private groupService: GroupService,
-    private authService: AuthService
+    private authService: AuthService,
+    private snackBar: MatSnackBar
   ) { }
+
+  copyInviteLink() {
+    if (!this.group) return;
+    const url = `${window.location.origin}/join-group?code=${encodeURIComponent(this.group.code)}`;
+    navigator.clipboard.writeText(url).then(() => {
+      this.snackBar.open('Enlace de invitación copiado al portapapeles', '', { duration: 3000 });
+    }).catch(() => {
+      this.snackBar.open('No se pudo copiar el enlace', '', { duration: 3000 });
+    });
+  }
 
   ngOnInit() {
     const code = this.route.snapshot.paramMap.get('code');

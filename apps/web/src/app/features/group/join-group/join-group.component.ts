@@ -1,7 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -79,7 +79,7 @@ import { GroupService } from '../../../core/services/group.service';
     }
   `]
 })
-export class JoinGroupComponent {
+export class JoinGroupComponent implements OnInit {
   joinForm: FormGroup;
   loading = false;
   message = '';
@@ -88,11 +88,23 @@ export class JoinGroupComponent {
   constructor(
     private fb: FormBuilder,
     private groupService: GroupService,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute
   ) {
     this.joinForm = this.fb.group({
       code: ['', [Validators.required, Validators.minLength(6), Validators.maxLength(6)]]
     });
+  }
+
+  ngOnInit() {
+    const codeParam = this.route.snapshot.queryParamMap.get('code');
+    if (codeParam) {
+      const normalized = String(codeParam).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+      this.joinForm.patchValue({ code: normalized }, { emitEvent: false });
+      if (normalized.length === 6 && this.joinForm.valid) {
+        this.doJoin(normalized);
+      }
+    }
   }
 
   onCodeInput(event: any) {
@@ -102,12 +114,15 @@ export class JoinGroupComponent {
 
   onSubmit() {
     if (this.joinForm.invalid) return;
+    this.doJoin(this.joinForm.value.code);
+  }
 
+  private doJoin(code: string) {
     this.loading = true;
     this.message = '';
     this.isError = false;
 
-    this.groupService.joinGroupByCode(this.joinForm.value.code).subscribe({
+    this.groupService.joinGroupByCode(code).subscribe({
       next: (group) => {
         this.router.navigate(['/g', group.code]);
       },
