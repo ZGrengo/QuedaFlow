@@ -1,12 +1,15 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { GroupService } from '../../../core/services/group.service';
+import { AuthService } from '../../../core/services/auth.service';
+import { combineLatest } from 'rxjs';
 
 @Component({
   selector: 'app-create-group',
@@ -14,10 +17,12 @@ import { GroupService } from '../../../core/services/group.service';
   imports: [
     CommonModule,
     ReactiveFormsModule,
+    RouterModule,
     MatCardModule,
     MatFormFieldModule,
     MatInputModule,
-    MatButtonModule
+    MatButtonModule,
+    MatIconModule
   ],
   template: `
     <div class="container">
@@ -26,7 +31,15 @@ import { GroupService } from '../../../core/services/group.service';
           <mat-card-title>Crear Grupo</mat-card-title>
         </mat-card-header>
         <mat-card-content>
-          <form [formGroup]="createForm" (ngSubmit)="onSubmit()">
+          <div *ngIf="atLimit" class="limit-message">
+            <p class="limit-text">
+              <mat-icon>info</mat-icon>
+              Máximo 5 grupos creados. Elimina uno que hayas creado en el inicio para poder crear otro.
+            </p>
+            <button mat-stroked-button routerLink="/dashboard">Volver al inicio</button>
+          </div>
+
+          <form *ngIf="!atLimit" [formGroup]="createForm" (ngSubmit)="onSubmit()">
             <mat-form-field appearance="outline" class="full-width">
               <mat-label>Nombre del Grupo</mat-label>
               <input matInput formControlName="name" required>
@@ -90,21 +103,59 @@ import { GroupService } from '../../../core/services/group.service';
       background-color: #ffebee;
       color: #c62828;
     }
+
+    .limit-message {
+      padding: 16px 0;
+    }
+
+    .limit-text {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin: 0 0 16px 0;
+      color: #555;
+    }
+
+    .limit-text mat-icon {
+      color: #e65100;
+      flex-shrink: 0;
+      margin-top: 2px;
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
   `]
 })
-export class CreateGroupComponent {
+export class CreateGroupComponent implements OnInit {
   createForm: FormGroup;
   loading = false;
   message = '';
   isError = false;
+  atLimit = false;
 
   constructor(
     private fb: FormBuilder,
     private groupService: GroupService,
+    private authService: AuthService,
     private router: Router
   ) {
     this.createForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(3)]]
+    });
+  }
+
+  ngOnInit(): void {
+    combineLatest([
+      this.authService.getCurrentUser(),
+      this.groupService.getMyGroups()
+    ]).subscribe(([user, groups]) => {
+      const uid = user?.id;
+      if (!uid) {
+        this.atLimit = false;
+        return;
+      }
+      const hostedCount = groups.filter(g => g.host_user_id === uid).length;
+      this.atLimit = hostedCount >= 5;
     });
   }
 

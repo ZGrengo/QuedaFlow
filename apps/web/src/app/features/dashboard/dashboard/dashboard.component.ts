@@ -9,6 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { AuthService } from '../../../core/services/auth.service';
 import { GroupService, Group } from '../../../core/services/group.service';
 
@@ -25,7 +26,8 @@ import { GroupService, Group } from '../../../core/services/group.service';
     MatInputModule,
     MatIconModule,
     MatToolbarModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatSnackBarModule
   ],
   template: `
     <div class="dashboard">
@@ -52,9 +54,16 @@ import { GroupService, Group } from '../../../core/services/group.service';
               <mat-card-subtitle>Crea un nuevo grupo y comparte el código con tus compañeros.</mat-card-subtitle>
             </mat-card-header>
             <mat-card-actions>
-              <button mat-raised-button color="primary" routerLink="/create-group">
+              <button *ngIf="canCreateGroup" mat-raised-button color="primary" routerLink="/create-group">
                 Crear grupo
               </button>
+              <div *ngIf="!canCreateGroup" class="limit-wrap">
+                <p class="limit-message">
+                  <mat-icon>info</mat-icon>
+                  Máximo 5 grupos creados. Elimina uno que hayas creado para crear otro.
+                </p>
+                <button mat-raised-button disabled>Crear grupo</button>
+              </div>
             </mat-card-actions>
           </mat-card>
 
@@ -94,11 +103,27 @@ import { GroupService, Group } from '../../../core/services/group.service';
             No tienes grupos aún. Crea uno o únete con un código arriba.
           </div>
           <div *ngIf="!myGroupsLoading && myGroups.length > 0" class="groups-list">
-            <a *ngFor="let group of myGroups" [routerLink]="['/g', group.code]" class="group-item">
-              <span class="group-name">{{ group.name }}</span>
-              <span class="group-code">Código: {{ group.code }}</span>
-              <mat-icon class="group-arrow">arrow_forward</mat-icon>
-            </a>
+            <div *ngFor="let group of myGroups" class="group-item">
+              <a [routerLink]="['/g', group.code]" class="group-item-link">
+                <span class="group-name">{{ group.name }}</span>
+                <span class="group-code">Código: {{ group.code }}</span>
+                <mat-icon class="group-arrow">arrow_forward</mat-icon>
+              </a>
+              <ng-container *ngIf="isHost(group)">
+                <button mat-icon-button color="warn" type="button" (click)="deleteGroup(group, $event)"
+                  matTooltip="Eliminar grupo" class="leave-btn" [disabled]="actionGroupId === group.id">
+                  <mat-icon *ngIf="actionGroupId !== group.id">delete</mat-icon>
+                  <mat-icon *ngIf="actionGroupId === group.id" class="spinner">hourglass_empty</mat-icon>
+                </button>
+              </ng-container>
+              <ng-container *ngIf="!isHost(group)">
+                <button mat-icon-button color="warn" type="button" (click)="leaveGroup(group, $event)"
+                  matTooltip="Dejar grupo" class="leave-btn" [disabled]="actionGroupId === group.id">
+                  <mat-icon *ngIf="actionGroupId !== group.id">exit_to_app</mat-icon>
+                  <mat-icon *ngIf="actionGroupId === group.id" class="spinner">hourglass_empty</mat-icon>
+                </button>
+              </ng-container>
+            </div>
           </div>
         </section>
       </div>
@@ -174,6 +199,29 @@ import { GroupService, Group } from '../../../core/services/group.service';
       padding-right: 0;
     }
 
+    .limit-wrap {
+      width: 100%;
+    }
+
+    .limit-message {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 12px 0;
+      padding: 12px;
+      background: #fff3e0;
+      color: #e65100;
+      border-radius: 4px;
+      font-size: 0.875rem;
+    }
+
+    .limit-message mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+
     .full-width {
       width: 100%;
     }
@@ -227,19 +275,32 @@ import { GroupService, Group } from '../../../core/services/group.service';
     .group-item {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 16px;
+      gap: 8px;
+      padding: 0;
       background: #fff;
       border-radius: 8px;
-      text-decoration: none;
-      color: inherit;
       border: 1px solid #e0e0e0;
       transition: background 0.2s, border-color 0.2s;
+      overflow: hidden;
     }
 
     .group-item:hover {
-      background: #f5f5f5;
       border-color: #bdbdbd;
+    }
+
+    .group-item-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      flex: 1;
+      text-decoration: none;
+      color: inherit;
+      min-width: 0;
+    }
+
+    .group-item-link:hover {
+      background: #f5f5f5;
     }
 
     .group-name {
@@ -255,6 +316,18 @@ import { GroupService, Group } from '../../../core/services/group.service';
     .group-arrow {
       color: #666;
     }
+
+    .leave-btn {
+      flex-shrink: 0;
+    }
+
+    .leave-btn .spinner {
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
   `]
 })
 export class DashboardComponent {
@@ -265,12 +338,15 @@ export class DashboardComponent {
   joinError = false;
   myGroups: Group[] = [];
   myGroupsLoading = true;
+  currentUserId: string | null = null;
+  actionGroupId: string | null = null;
 
   constructor(
     private authService: AuthService,
     private groupService: GroupService,
     private router: Router,
-    private fb: FormBuilder
+    private fb: FormBuilder,
+    private snackBar: MatSnackBar
   ) {
     this.joinForm = this.fb.group({
       code: ['', [Validators.required, Validators.minLength(6), Validators.maxLength(6)]]
@@ -278,6 +354,7 @@ export class DashboardComponent {
 
     this.authService.getCurrentUser().subscribe(user => {
       this.userEmail = user?.email ?? '';
+      this.currentUserId = user?.id ?? null;
     });
 
     this.groupService.getMyGroups().subscribe({
@@ -320,6 +397,55 @@ export class DashboardComponent {
     this.authService.signOut().catch(() => {
       // Aun si falla Supabase, redirigir a login para no dejar sesión colgada
       this.router.navigate(['/login'], { replaceUrl: true });
+    });
+  }
+
+  isHost(group: Group): boolean {
+    return this.currentUserId !== null && group.host_user_id === this.currentUserId;
+  }
+
+  get hostedGroupsCount(): number {
+    if (!this.currentUserId) return 0;
+    return this.myGroups.filter(g => g.host_user_id === this.currentUserId).length;
+  }
+
+  get canCreateGroup(): boolean {
+    return this.hostedGroupsCount < 5;
+  }
+
+  leaveGroup(group: Group, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!confirm(`¿Dejar el grupo "${group.name}"? Ya no verás este grupo en tu lista.`)) return;
+    this.actionGroupId = group.id;
+    this.groupService.leaveGroup(group.id).subscribe({
+      next: () => {
+        this.myGroups = this.myGroups.filter(g => g.id !== group.id);
+        this.actionGroupId = null;
+        this.snackBar.open(`Has dejado el grupo ${group.name}`, undefined, { duration: 3000 });
+      },
+      error: (err: { message?: string }) => {
+        this.actionGroupId = null;
+        this.snackBar.open(err?.message ?? 'Error al dejar el grupo', 'Cerrar', { duration: 4000 });
+      }
+    });
+  }
+
+  deleteGroup(group: Group, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!confirm(`¿Eliminar el grupo "${group.name}"? Se borrarán todos los datos del grupo (miembros, bloques, configuración). Esta acción no se puede deshacer.`)) return;
+    this.actionGroupId = group.id;
+    this.groupService.deleteGroup(group.id).subscribe({
+      next: () => {
+        this.myGroups = this.myGroups.filter(g => g.id !== group.id);
+        this.actionGroupId = null;
+        this.snackBar.open(`Grupo ${group.name} eliminado`, undefined, { duration: 3000 });
+      },
+      error: (err: { message?: string }) => {
+        this.actionGroupId = null;
+        this.snackBar.open(err?.message ?? 'Error al eliminar el grupo', 'Cerrar', { duration: 4000 });
+      }
     });
   }
 }

@@ -109,6 +109,8 @@ En Supabase Dashboard:
    - `007_join_group_by_code_rpc.sql`
    - `008_group_planning_settings.sql`
    - `009_rls_and_triggers_validations.sql`
+   - `010_group_delete_policy.sql`
+   - `011_limit_max_groups_per_user.sql`
 
 O usando Supabase CLI:
 
@@ -182,6 +184,7 @@ En Supabase Dashboard:
 - **Buffer antes de trabajo**: El host define `buffer_before_work_min` (default 20). Para el cálculo, los bloques WORK "ocupan" también ese buffer antes del inicio (no se modifica el bloque guardado).
 - **Blocked windows**: El host define franjas excluidas del cálculo (ej. 00:00-07:59).
 - **Máximo 3 PREFERRED** por usuario dentro del rango planning (trigger).
+- **Máximo 5 grupos creados** por usuario (como host); se aplica en la RPC `create_group`.
 - **Duración mínima reunión**: `min_meeting_duration_min` (default 60) para rankeo futuro.
 
 ## Rutas
@@ -254,7 +257,9 @@ supabase/
     ├── 006_fix_generate_group_code_ambiguous.sql
     ├── 007_join_group_by_code_rpc.sql
     ├── 008_group_planning_settings.sql
-    └── 009_rls_and_triggers_validations.sql
+    ├── 009_rls_and_triggers_validations.sql
+    ├── 010_group_delete_policy.sql
+    └── 011_limit_max_groups_per_user.sql
 ```
 
 ## Checklist de Implementación

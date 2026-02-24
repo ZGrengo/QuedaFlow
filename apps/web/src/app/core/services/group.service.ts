@@ -89,6 +89,39 @@ export class GroupService {
     );
   }
 
+  /** Dejar un grupo (elimina la membresía del usuario actual). */
+  leaveGroup(groupId: string): Observable<void> {
+    return from(this.supabase.auth.getUser()).pipe(
+      switchMap(({ data: { user }, error: userError }) => {
+        if (userError || !user) throw new Error('Debes iniciar sesión');
+        return from(
+          this.supabase
+            .from('group_members')
+            .delete()
+            .eq('group_id', groupId)
+            .eq('user_id', user.id)
+        );
+      }),
+      map(({ error }) => {
+        if (error) throw error;
+      })
+    );
+  }
+
+  /** Eliminar un grupo (solo el host). CASCADE elimina miembros, ventanas y bloques. */
+  deleteGroup(groupId: string): Observable<void> {
+    return from(
+      this.supabase
+        .from('groups')
+        .delete()
+        .eq('id', groupId)
+    ).pipe(
+      map(({ error }) => {
+        if (error) throw error;
+      })
+    );
+  }
+
   getGroup(code: string): Observable<Group> {
     return from(
       this.supabase
