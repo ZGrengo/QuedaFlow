@@ -1,0 +1,159 @@
+<main class="home">
+  <!-- HERO -->
+  <app-hero-section (viewHowItWorks)="scrollToSection('how-it-works')"></app-hero-section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how-it-works" class="section how-it-works" @fadeInUp>
+    <div class="section-header">
+      <h2>Cómo funciona QuedaFlow</h2>
+      <p>En tres pasos, de horarios caóticos a reuniones claras.</p>
+    </div>
+
+    <div class="cards-grid">
+      <app-feature-card
+        icon="group"
+        title="1. Crea o únete a un grupo"
+        description="Invita a tu equipo con un código sencillo. Cada persona ve solo los grupos en los que participa.">
+      </app-feature-card>
+
+      <app-feature-card
+        icon="calendar_month"
+        title="2. Añade tus turnos (manual u OCR)"
+        description="Introduce tus horarios a mano o sube capturas de tu app de turnos. El OCR extrae la información por ti.">
+      </app-feature-card>
+
+      <app-feature-card
+        icon="insights"
+        title="3. Descubre los mejores días automáticamente"
+        description="QuedaFlow calcula los mejores huecos según las reglas del host, preferencias y buffers.">
+      </app-feature-card>
+    </div>
+  </section>
+
+  <!-- DIFFERENTIAL -->
+  <section class="section differential" @fadeInUp>
+    <div class="section-header">
+      <h2>Diseñado para horarios complicados</h2>
+      <p>No es solo un calendario compartido. Es un motor de decisiones para turnos cambiantes.</p>
+    </div>
+
+    <div class="differential-grid">
+      <mat-card class="diff-card" appearance="outlined">
+        <mat-card-content>
+          <h3>
+            <mat-icon>photo_camera</mat-icon>
+            Importa tus horarios con captura
+          </h3>
+          <p>
+            Sube una captura de tu app de horarios tipo Mapal y deja que el OCR detecte automáticamente fechas y turnos.
+          </p>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="diff-card" appearance="outlined">
+        <mat-card-content>
+          <h3>
+            <mat-icon>tune</mat-icon>
+            Reglas del host incorporadas
+          </h3>
+          <p>
+            Define rango de planificación, buffers antes de cada turno, ventanas bloqueadas y más. El sistema respeta todas las reglas al calcular.
+          </p>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="diff-card" appearance="outlined">
+        <mat-card-content>
+          <h3>
+            <mat-icon>star</mat-icon>
+            Días favoritos y preferencias
+          </h3>
+          <p>
+            Marca bloques preferidos para priorizar ciertos días u horas. El planner lo tiene en cuenta al sugerir huecos.
+          </p>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="diff-card" appearance="outlined">
+        <mat-card-content>
+          <h3>
+            <mat-icon>shield</mat-icon>
+            Seguridad por diseño
+          </h3>
+          <p>
+            Autenticación con Supabase, RLS a nivel de grupo y orígenes de datos claros (manual u OCR) para cada bloque.
+          </p>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </section>
+
+  <!-- DEMO -->
+  <section class="section demo" @fadeInUp>
+    <div class="demo-layout">
+      <div class="demo-copy">
+        <h2>Visualiza los mejores huecos de un vistazo</h2>
+        <p>
+          El planner resume la disponibilidad de todo el grupo día a día, con colores claros y porcentajes de coincidencia.
+          No más hilos infinitos de “¿Quién puede tal día?”.
+        </p>
+        <ul class="demo-list">
+          <li>
+            <mat-icon>check_circle</mat-icon>
+            Mapa de disponibilidad por día y franja horaria.
+          </li>
+          <li>
+            <mat-icon>check_circle</mat-icon>
+            Cálculo automático respetando buffers y ventanas bloqueadas.
+          </li>
+          <li>
+            <mat-icon>check_circle</mat-icon>
+            Visión global sin exponer detalles sensibles del horario.
+          </li>
+        </ul>
+      </div>
+
+      <div class="demo-visual">
+        <div class="demo-placeholder">
+          <div class="demo-header">
+            <span>Planner semanal</span>
+            <span class="demo-badge">Preview</span>
+          </div>
+          <div class="demo-grid">
+            <div class="demo-day" *ngFor="let day of ['Lun', 'Mar', 'Mié', 'Jue', 'Vie']">
+              <div class="demo-day-label">{{ day }}</div>
+              <div class="demo-slot demo-slot-high"></div>
+              <div class="demo-slot demo-slot-medium"></div>
+              <div class="demo-slot demo-slot-low"></div>
+            </div>
+          </div>
+          <div class="demo-legend">
+            <span><span class="dot high"></span> Alta coincidencia</span>
+            <span><span class="dot medium"></span> Media</span>
+            <span><span class="dot low"></span> Baja</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA FINAL -->
+  <app-cta-section
+    [title]="'Empieza a organizar mejor hoy.'"
+    [subtitle]="'Crea un grupo en segundos, invita a tu equipo y deja que QuedaFlow haga el trabajo duro.'"
+    [primaryLabel]="'Crear mi grupo'"
+    [primaryLink]="'/login'">
+  </app-cta-section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <span class="footer-brand">QuedaFlow © {{ currentYear }}</span>
+      <span class="footer-links">
+        <a href="https://github.com/placeholder/quedaflow" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a routerLink="/login">Login</a>
+      </span>
+    </div>
+  </footer>
+</main>
+

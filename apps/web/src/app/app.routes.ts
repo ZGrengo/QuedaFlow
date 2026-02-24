@@ -49,6 +49,11 @@ export const routes: Routes = [
   {
     path: '',
     pathMatch: 'full',
+    loadComponent: () => import('./features/home/home.page').then(m => m.HomePageComponent)
+  },
+  {
+    path: 'app',
+    pathMatch: 'full',
     loadComponent: () => import('./core/guards/redirect-guard.component').then(m => m.RedirectGuardComponent)
   },
   {
