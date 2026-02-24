@@ -22,14 +22,14 @@ import { minToHhmm } from '@domain/index';
     MatChipsModule
   ],
   template: `
-    <div class="container">
+    <div class="qf-page container">
       <div class="nav-back">
         <button mat-stroked-button [routerLink]="['/g', code]">
           <mat-icon>arrow_back</mat-icon>
           Volver al grupo
         </button>
       </div>
-      <mat-card>
+      <mat-card class="qf-surface">
         <mat-card-header>
           <mat-card-title>Mejores Huecos Disponibles</mat-card-title>
         </mat-card-header>
@@ -75,8 +75,12 @@ import { minToHhmm } from '@domain/index';
       text-align: center;
     }
 
+    .loading, .empty {
+      color: var(--qf-text-muted);
+    }
+
     .error {
-      color: #c62828;
+      color: var(--qf-primary);
     }
 
     .slots-grid {
@@ -88,21 +92,6 @@ import { minToHhmm } from '@domain/index';
 
     .slot-card {
       min-height: 120px;
-    }
-
-    .slot-green {
-      background-color: #4caf50;
-      color: white;
-    }
-
-    .slot-yellow {
-      background-color: #ffc107;
-      color: black;
-    }
-
-    .slot-red {
-      background-color: #f44336;
-      color: white;
     }
 
     .slot-header {

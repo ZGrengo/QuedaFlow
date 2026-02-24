@@ -1,29 +1,158 @@
 @import '@angular/material/prebuilt-themes/indigo-pink.css';
 
+/* ========== DESIGN TOKENS (QuedaFlow palette) ========== */
+:root {
+  --qf-bg: #120C24;
+  --qf-surface: #ffffff;
+  --qf-surface-2: #f5f4f8;
+  --qf-primary: #CB2546;
+  --qf-secondary: #FA743B;
+  --qf-warning: #FFD236;
+  --qf-success: #A2D3C2;
+  --qf-text-on-dark: #f0eef4;
+  --qf-text-muted-on-dark: rgba(240, 238, 244, 0.75);
+  --qf-text-muted: #5c5c66;
+  --qf-border-on-dark: rgba(255, 255, 255, 0.12);
+  --qf-shadow: 0 4px 24px rgba(18, 12, 36, 0.2);
+  --qf-shadow-soft: 0 2px 12px rgba(18, 12, 36, 0.08);
+}
+
+/* ========== GLOBAL LAYOUT ========== */
 html, body {
   height: 100%;
   margin: 0;
   font-family: Roboto, "Helvetica Neue", sans-serif;
+  background: var(--qf-bg);
+  color: var(--qf-text-on-dark);
 }
 
+/* Subtle pattern overlay: dots + soft gradient tint (no images) */
+body {
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(162, 211, 194, 0.06) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(255, 210, 54, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(250, 116, 59, 0.04) 0%, transparent 45%),
+    radial-gradient(2px 2px at 0 0, rgba(255, 255, 255, 0.03) 50%, transparent 50%),
+    radial-gradient(2px 2px at 20px 20px, rgba(255, 255, 255, 0.025) 50%, transparent 50%);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 24px 24px, 24px 24px;
+  background-position: 0 0, 0 0, 0 0, 0 0, 12px 12px;
+  background-attachment: fixed;
+}
+
+/* ========== UTILITY CLASSES ========== */
+.qf-page {
+  padding: clamp(16px, 4vw, 32px);
+  min-height: 100vh;
+}
+
+.qf-section {
+  margin: clamp(24px, 4vw, 48px) 0;
+}
+
+.qf-surface {
+  background: var(--qf-surface);
+  color: #1a1a1e;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: var(--qf-shadow-soft);
+  padding: clamp(20px, 4vw, 32px);
+}
+
+.qf-surface--soft {
+  background: var(--qf-surface-2);
+  border-color: rgba(0, 0, 0, 0.05);
+}
+
+.qf-muted {
+  color: #5c5c66;
+}
+
+.qf-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--qf-border-on-dark);
+  font-size: 0.8rem;
+  color: var(--qf-text-muted-on-dark);
+}
+
+.qf-divider {
+  height: 1px;
+  background: var(--qf-border-on-dark);
+  margin: 16px 0;
+  border: none;
+}
+
+/* ========== MATERIAL BUTTON OVERRIDES (use with mat-raised/outlined) ========== */
+.qf-btn-primary.mat-mdc-raised-button {
+  background-color: var(--qf-primary) !important;
+  color: #fff !important;
+}
+
+.qf-btn-primary.mat-mdc-raised-button:hover {
+  background-color: color-mix(in srgb, var(--qf-primary) 90%, black) !important;
+}
+
+.qf-btn-primary.mat-mdc-raised-button:focus-visible {
+  outline: 2px solid var(--qf-secondary);
+  outline-offset: 2px;
+}
+
+.qf-btn-accent.mat-mdc-raised-button {
+  background-color: var(--qf-secondary) !important;
+  color: #fff !important;
+}
+
+.qf-btn-accent.mat-mdc-raised-button:hover {
+  background-color: color-mix(in srgb, var(--qf-secondary) 90%, black) !important;
+}
+
+.qf-btn-accent.mat-mdc-raised-button:focus-visible {
+  outline: 2px solid var(--qf-primary);
+  outline-offset: 2px;
+}
+
+.qf-btn-secondary.mat-mdc-outlined-button {
+  border-color: var(--qf-border-on-dark) !important;
+  color: var(--qf-text-on-dark) !important;
+}
+
+.qf-btn-secondary.mat-mdc-outlined-button:hover {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.qf-btn-secondary.mat-mdc-outlined-button:focus-visible {
+  outline: 2px solid var(--qf-secondary);
+  outline-offset: 2px;
+}
+
+/* Toolbar con paleta (para páginas internas) */
+.qf-toolbar.mat-mdc-toolbar {
+  background-color: var(--qf-primary) !important;
+  color: #fff !important;
+}
+
+/* ========== LEGACY / SHARED ========== */
 .container {
   max-width: 1200px;
   margin: 0 auto;
   padding: 16px;
 }
 
+/* Slots: mapped to palette (success, warning, primary) — keep contrast safe */
 .slot-green {
-  background-color: #4caf50 !important;
-  color: white;
+  background-color: var(--qf-success) !important;
+  color: #1a1a1e;
 }
 
 .slot-yellow {
-  background-color: #ffc107 !important;
-  color: black;
+  background-color: var(--qf-warning) !important;
+  color: #1a1a1e;
 }
 
 .slot-red {
-  background-color: #f44336 !important;
+  background-color: var(--qf-primary) !important;
   color: white;
 }
-

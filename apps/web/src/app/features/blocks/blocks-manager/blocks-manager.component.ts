@@ -38,14 +38,14 @@ import { formatDateDDMMYYYY } from '../../../core/utils/date-format';
     MatSnackBarModule
   ],
   template: `
-    <div class="container">
+    <div class="qf-page container">
       <div class="nav-back">
         <button mat-stroked-button [routerLink]="['/g', code]">
           <mat-icon>arrow_back</mat-icon>
           Volver al grupo
         </button>
       </div>
-      <mat-card>
+      <mat-card class="qf-surface">
         <mat-card-header>
           <mat-card-title>Gestionar Bloques de Ocupación</mat-card-title>
           <mat-card-subtitle>Añade las horas en las que trabajas (WORK) y otros momentos en los que no estás disponible (UNAVAILABLE). Los huecos libres se calcularán automáticamente.</mat-card-subtitle>
@@ -89,7 +89,7 @@ import { formatDateDDMMYYYY } from '../../../core/utils/date-format';
             </div>
 
             <div class="form-actions">
-              <button mat-raised-button color="primary" type="submit" [disabled]="blockForm.invalid || loading">
+              <button mat-raised-button class="qf-btn-primary" type="submit" [disabled]="blockForm.invalid || loading">
                 Añadir Bloque
               </button>
               <button mat-stroked-button type="button" [routerLink]="['/g', code, 'import']">
@@ -101,7 +101,7 @@ import { formatDateDDMMYYYY } from '../../../core/utils/date-format';
         </mat-card-content>
       </mat-card>
 
-      <mat-card class="blocks-list">
+      <mat-card class="qf-surface blocks-list">
         <mat-card-header>
           <mat-card-title>Mis Bloques</mat-card-title>
         </mat-card-header>
@@ -165,17 +165,17 @@ import { formatDateDDMMYYYY } from '../../../core/utils/date-format';
       justify-content: space-between;
       align-items: center;
       padding: 8px 0;
-      border-bottom: 1px solid #e0e0e0;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
     }
 
     .empty {
       padding: 16px;
       text-align: center;
-      color: #666;
+      color: var(--qf-text-muted);
     }
 
     .warning {
-      color: #f57c00;
+      color: var(--qf-warning);
       margin-bottom: 16px;
     }
   `]

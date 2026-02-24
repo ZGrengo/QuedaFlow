@@ -43,7 +43,7 @@ const DOW_LABELS: Record<number, string> = {
     MatSnackBarModule
   ],
   template: `
-    <div class="container">
+    <div class="qf-page container">
       <div class="nav-back">
         <button mat-stroked-button [routerLink]="['/g', code]">
           <mat-icon>arrow_back</mat-icon>
@@ -52,15 +52,15 @@ const DOW_LABELS: Record<number, string> = {
       </div>
 
       <div *ngIf="!isHost" class="forbidden">
-        <mat-card>
+        <mat-card class="qf-surface">
           <mat-card-content>
-            <p>Solo el host puede configurar el grupo.</p>
+            <p class="qf-muted">Solo el host puede configurar el grupo.</p>
           </mat-card-content>
         </mat-card>
       </div>
 
       <div *ngIf="isHost && group">
-        <mat-card>
+        <mat-card class="qf-surface">
           <mat-card-header>
             <mat-card-title>Configuración del Grupo</mat-card-title>
             <mat-card-subtitle>Rango de planificación, buffer y ventanas bloqueadas</mat-card-subtitle>
@@ -104,14 +104,14 @@ const DOW_LABELS: Record<number, string> = {
                 </div>
               </div>
 
-              <button mat-raised-button color="primary" type="submit" [disabled]="settingsForm.invalid || saving">
+              <button mat-raised-button class="qf-btn-primary" type="submit" [disabled]="settingsForm.invalid || saving">
                 Guardar configuración
               </button>
             </form>
           </mat-card-content>
         </mat-card>
 
-        <mat-card class="blocked-windows">
+        <mat-card class="qf-surface blocked-windows">
           <mat-card-header>
             <mat-card-title>Ventanas bloqueadas</mat-card-title>
             <mat-card-subtitle>Franjas horarias excluidas del cálculo (ej. 00:00-07:59)</mat-card-subtitle>
@@ -135,7 +135,7 @@ const DOW_LABELS: Record<number, string> = {
                   </mat-select>
                 </mat-form-field>
               </div>
-              <button mat-raised-button color="accent" type="submit" [disabled]="windowForm.invalid">
+              <button mat-raised-button class="qf-btn-accent" type="submit" [disabled]="windowForm.invalid">
                 Añadir franja
               </button>
             </form>
@@ -170,10 +170,10 @@ const DOW_LABELS: Record<number, string> = {
       align-items: center;
       gap: 12px;
       padding: 8px 0;
-      border-bottom: 1px solid #e0e0e0;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
     }
-    .window-item .dow { color: #666; font-size: 0.875rem; }
-    .empty { padding: 16px; color: #666; }
+    .window-item .dow { color: var(--qf-text-muted); font-size: 0.875rem; }
+    .empty { padding: 16px; color: var(--qf-text-muted); }
   `]
 })
 export class GroupSettingsComponent implements OnInit {

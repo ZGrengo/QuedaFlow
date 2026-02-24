@@ -22,19 +22,19 @@ import { AuthService } from '../../../core/services/auth.service';
     MatSnackBarModule
   ],
   template: `
-    <div class="container">
-      <mat-card *ngIf="group">
+    <div class="qf-page container">
+      <mat-card *ngIf="group" class="qf-surface">
         <mat-card-header>
           <mat-card-title>{{ group.name }}</mat-card-title>
           <mat-card-subtitle>Código: {{ group.code }}</mat-card-subtitle>
         </mat-card-header>
         <mat-card-content>
           <div class="actions">
-            <button mat-raised-button color="primary" routerLink="/g/{{ group.code }}/blocks">
+            <button mat-raised-button class="qf-btn-primary" routerLink="/g/{{ group.code }}/blocks">
               <mat-icon>event</mat-icon>
               Gestionar Bloques
             </button>
-            <button mat-raised-button color="accent" routerLink="/g/{{ group.code }}/planner">
+            <button mat-raised-button class="qf-btn-accent" routerLink="/g/{{ group.code }}/planner">
               <mat-icon>schedule</mat-icon>
               Ver Planner
             </button>
@@ -56,7 +56,7 @@ import { AuthService } from '../../../core/services/auth.service';
         </mat-card-content>
       </mat-card>
 
-      <div *ngIf="loading" class="loading">Cargando...</div>
+      <div *ngIf="loading" class="loading qf-muted">Cargando...</div>
       <div *ngIf="error" class="error">{{ error }}</div>
     </div>
   `,
@@ -83,7 +83,7 @@ import { AuthService } from '../../../core/services/auth.service';
     }
 
     .error {
-      color: #c62828;
+      color: var(--qf-primary);
     }
   `]
 })

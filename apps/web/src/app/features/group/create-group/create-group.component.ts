@@ -25,8 +25,8 @@ import { combineLatest } from 'rxjs';
     MatIconModule
   ],
   template: `
-    <div class="container">
-      <mat-card>
+    <div class="qf-page container">
+      <mat-card class="qf-surface">
         <mat-card-header>
           <mat-card-title>Crear Grupo</mat-card-title>
         </mat-card-header>
@@ -56,7 +56,7 @@ import { combineLatest } from 'rxjs';
               <button mat-button type="button" (click)="onCancel()">
                 Cancelar
               </button>
-              <button mat-raised-button color="primary" type="submit" [disabled]="createForm.invalid || loading">
+              <button mat-raised-button class="qf-btn-primary" type="submit" [disabled]="createForm.invalid || loading">
                 {{ loading ? 'Creando...' : 'Crear Grupo' }}
               </button>
             </div>
@@ -95,13 +95,13 @@ import { combineLatest } from 'rxjs';
       margin: 16px 0;
       padding: 12px;
       border-radius: 4px;
-      background-color: #e3f2fd;
-      color: #1976d2;
+      background-color: rgba(162, 211, 194, 0.25);
+      color: #1a5c4a;
     }
 
     .message.error {
-      background-color: #ffebee;
-      color: #c62828;
+      background-color: rgba(203, 37, 70, 0.12);
+      color: var(--qf-primary);
     }
 
     .limit-message {
@@ -113,11 +113,11 @@ import { combineLatest } from 'rxjs';
       align-items: flex-start;
       gap: 8px;
       margin: 0 0 16px 0;
-      color: #555;
+      color: var(--qf-text-muted);
     }
 
     .limit-text mat-icon {
-      color: #e65100;
+      color: var(--qf-warning);
       flex-shrink: 0;
       margin-top: 2px;
       font-size: 20px;

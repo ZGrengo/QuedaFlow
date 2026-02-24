@@ -35,7 +35,7 @@ type Step = 'upload' | 'results' | 'saving' | 'summary';
     ShiftEditorComponent
   ],
   template: `
-    <div class="container">
+    <div class="qf-page container">
       <div class="nav-back">
         <button mat-stroked-button [routerLink]="['/g', code]">
           <mat-icon>arrow_back</mat-icon>
@@ -43,7 +43,7 @@ type Step = 'upload' | 'results' | 'saving' | 'summary';
         </button>
       </div>
 
-      <mat-card>
+      <mat-card class="qf-surface">
         <mat-card-header>
           <mat-card-title>Importar Horarios por OCR</mat-card-title>
           <mat-card-subtitle>Sube una captura de tu app de horarios y el sistema detectará los turnos automáticamente</mat-card-subtitle>
@@ -60,7 +60,7 @@ type Step = 'upload' | 'results' | 'saving' | 'summary';
                 style="display: none"
                 #fileInput>
               <label for="file-input">
-                <button mat-raised-button color="primary" type="button" (click)="fileInput.click()">
+                <button mat-raised-button class="qf-btn-primary" type="button" (click)="fileInput.click()">
                   <mat-icon>upload</mat-icon>
                   Seleccionar imagen
                 </button>
@@ -70,7 +70,7 @@ type Step = 'upload' | 'results' | 'saving' | 'summary';
                 <img [src]="imagePreview" alt="Preview" class="preview-image" *ngIf="imagePreview">
               </div>
               <div *ngIf="selectedFile && !processingOcr" class="actions">
-                <button mat-raised-button color="primary" type="button" (click)="analyzeImage()">
+                <button mat-raised-button class="qf-btn-primary" type="button" (click)="analyzeImage()">
                   <mat-icon>text_fields</mat-icon>
                   Analizar con OCR
                 </button>
@@ -92,7 +92,7 @@ type Step = 'upload' | 'results' | 'saving' | 'summary';
           <div *ngIf="currentStep === 'results'">
             <div class="results-header">
               <h3>Turnos Detectados ({{ detectedShifts.length }})</h3>
-              <button mat-raised-button color="accent" (click)="addNewShift()">
+              <button mat-raised-button class="qf-btn-accent" (click)="addNewShift()">
                 <mat-icon>add</mat-icon>
                 Añadir turno
               </button>
@@ -141,7 +141,7 @@ type Step = 'upload' | 'results' | 'saving' | 'summary';
               <button mat-button (click)="cancelResults()">
                 Cancelar
               </button>
-              <button mat-raised-button color="primary" (click)="saveShifts()" [disabled]="detectedShifts.length === 0 || saving">
+              <button mat-raised-button class="qf-btn-primary" (click)="saveShifts()" [disabled]="detectedShifts.length === 0 || saving">
                 <mat-icon>save</mat-icon>
                 Guardar turnos
               </button>
@@ -176,7 +176,7 @@ type Step = 'upload' | 'results' | 'saving' | 'summary';
               </div>
             </div>
             <div class="actions">
-              <button mat-raised-button color="primary" [routerLink]="['/g', code, 'blocks']">
+              <button mat-raised-button class="qf-btn-primary" [routerLink]="['/g', code, 'blocks']">
                 Ver bloques
               </button>
               <button mat-raised-button [routerLink]="['/g', code, 'planner']">
@@ -208,7 +208,7 @@ type Step = 'upload' | 'results' | 'saving' | 'summary';
       max-width: 100%;
       max-height: 400px;
       margin-top: 16px;
-      border: 1px solid #e0e0e0;
+      border: 1px solid rgba(0, 0, 0, 0.08);
       border-radius: 4px;
     }
 
@@ -247,7 +247,7 @@ type Step = 'upload' | 'results' | 'saving' | 'summary';
 
     .issue-item {
       padding: 8px 0;
-      border-bottom: 1px solid #e0e0e0;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
       font-size: 0.875rem;
     }
 
@@ -256,7 +256,7 @@ type Step = 'upload' | 'results' | 'saving' | 'summary';
     }
 
     .ocr-text {
-      background: #f5f5f5;
+      background: var(--qf-surface-2);
       padding: 12px;
       border-radius: 4px;
       font-size: 0.875rem;
@@ -283,11 +283,11 @@ type Step = 'upload' | 'results' | 'saving' | 'summary';
     }
 
     .stat.success {
-      color: #2e7d32;
+      color: #1a5c4a;
     }
 
     .stat.error {
-      color: #c62828;
+      color: var(--qf-primary);
     }
 
     .save-results {
@@ -296,11 +296,11 @@ type Step = 'upload' | 'results' | 'saving' | 'summary';
 
     .result-item {
       padding: 8px 0;
-      border-bottom: 1px solid #e0e0e0;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
     }
 
     .result-item.error {
-      color: #c62828;
+      color: var(--qf-primary);
     }
   `]
 })

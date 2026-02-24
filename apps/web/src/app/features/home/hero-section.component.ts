@@ -16,10 +16,10 @@ import { MatIconModule } from '@angular/material/icon';
           Sube tu horario, encuentra los mejores huecos automáticamente y deja que el sistema calcule por ti.
         </p>
         <div class="hero-actions">
-          <button mat-raised-button color="primary" routerLink="/login">
+          <button mat-raised-button class="qf-btn-primary" routerLink="/login">
             Crear grupo
           </button>
-          <button mat-stroked-button color="primary" type="button" (click)="viewHowItWorks.emit()">
+          <button mat-stroked-button class="qf-btn-secondary" type="button" (click)="viewHowItWorks.emit()">
             <mat-icon>play_circle</mat-icon>
             Ver cómo funciona
           </button>
@@ -54,10 +54,10 @@ import { MatIconModule } from '@angular/material/icon';
     .hero {
       display: grid;
       grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-      gap: 40px;
+      gap: clamp(24px, 3vw, 40px);
       align-items: center;
-      padding: 40px 16px 32px;
-      max-width: 1120px;
+      padding: 0;
+      max-width: 100%;
       margin: 0 auto;
     }
 
@@ -72,12 +72,13 @@ import { MatIconModule } from '@angular/material/icon';
       font-size: clamp(2.2rem, 3vw, 2.8rem);
       font-weight: 700;
       letter-spacing: -0.03em;
+      color: var(--qf-text-on-dark);
     }
 
     .hero-subtitle {
       margin: 0;
       font-size: 1.05rem;
-      color: #555;
+      color: var(--qf-text-muted-on-dark);
       line-height: 1.6;
     }
 
@@ -95,7 +96,7 @@ import { MatIconModule } from '@angular/material/icon';
     .hero-caption {
       margin: 0;
       font-size: 0.9rem;
-      color: #777;
+      color: var(--qf-text-muted-on-dark);
     }
 
     .hero-visual {
@@ -108,9 +109,10 @@ import { MatIconModule } from '@angular/material/icon';
       max-width: 360px;
       border-radius: 16px;
       padding: 16px 16px 12px;
-      background: linear-gradient(135deg, #f3f6ff, #ffffff);
-      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.16);
-      border: 1px solid rgba(120, 144, 255, 0.25);
+      background: var(--qf-surface);
+      box-shadow: var(--qf-shadow);
+      border: 1px solid var(--qf-border-on-dark);
+      color: #1a1a1e;
     }
 
     .hero-card-header {
@@ -123,8 +125,8 @@ import { MatIconModule } from '@angular/material/icon';
     .badge {
       padding: 4px 10px;
       border-radius: 999px;
-      background: rgba(63, 81, 181, 0.08);
-      color: #3f51b5;
+      background: rgba(203, 37, 70, 0.1);
+      color: var(--qf-primary);
       font-size: 0.75rem;
       font-weight: 500;
     }
@@ -133,8 +135,8 @@ import { MatIconModule } from '@angular/material/icon';
       width: 10px;
       height: 10px;
       border-radius: 50%;
-      background: #4caf50;
-      box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.25);
+      background: var(--qf-success);
+      box-shadow: 0 0 0 4px rgba(162, 211, 194, 0.35);
     }
 
     .hero-card-body {
@@ -153,7 +155,7 @@ import { MatIconModule } from '@angular/material/icon';
     }
 
     .slot-time {
-      color: #666;
+      color: #5c5c66;
     }
 
     .slot-bar {
@@ -168,15 +170,18 @@ import { MatIconModule } from '@angular/material/icon';
     }
 
     .slot-bar.green {
-      background: linear-gradient(90deg, #43a047, #66bb6a);
+      background: linear-gradient(90deg, var(--qf-success), color-mix(in srgb, var(--qf-success) 85%, white));
+      color: #1a1a1e;
     }
 
     .slot-bar.yellow {
-      background: linear-gradient(90deg, #f9a825, #ffca28);
+      background: linear-gradient(90deg, var(--qf-warning), color-mix(in srgb, var(--qf-warning) 85%, white));
+      color: #1a1a1e;
     }
 
     .slot-bar.red {
-      background: linear-gradient(90deg, #e53935, #ef5350);
+      background: linear-gradient(90deg, var(--qf-primary), color-mix(in srgb, var(--qf-primary) 80%, white));
+      color: #fff;
     }
 
     .slot-label {
@@ -186,7 +191,7 @@ import { MatIconModule } from '@angular/material/icon';
 
     .hero-card-footer {
       font-size: 0.75rem;
-      color: #888;
+      color: #6b7280;
       text-align: right;
     }
 
@@ -197,7 +202,6 @@ import { MatIconModule } from '@angular/material/icon';
     @media (max-width: 900px) {
       .hero {
         grid-template-columns: minmax(0, 1fr);
-        padding-top: 24px;
       }
 
       .hero-visual {

@@ -19,11 +19,11 @@ import { MatIconModule } from '@angular/material/icon';
   `,
   styles: [`
     .feature-card {
-      background: #ffffff;
+      background: var(--qf-surface);
       border-radius: 16px;
       padding: 20px 18px 18px;
-      border: 1px solid #e0e0e0;
-      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      box-shadow: 0 2px 12px rgba(18, 12, 36, 0.06);
       display: flex;
       flex-direction: column;
       gap: 10px;
@@ -34,11 +34,11 @@ import { MatIconModule } from '@angular/material/icon';
       width: 40px;
       height: 40px;
       border-radius: 12px;
-      background: rgba(63, 81, 181, 0.1);
+      background: rgba(203, 37, 70, 0.1);
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #3f51b5;
+      color: var(--qf-primary);
     }
 
     .feature-icon mat-icon {
@@ -56,7 +56,7 @@ import { MatIconModule } from '@angular/material/icon';
     .feature-description {
       margin: 0;
       font-size: 0.95rem;
-      color: #555;
+      color: var(--qf-text-muted);
       line-height: 1.5;
     }
   `]

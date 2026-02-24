@@ -20,8 +20,8 @@ import { GroupService } from '../../../core/services/group.service';
     MatButtonModule
   ],
   template: `
-    <div class="container">
-      <mat-card>
+    <div class="qf-page container">
+      <mat-card class="qf-surface">
         <mat-card-header>
           <mat-card-title>Unirse a Grupo</mat-card-title>
         </mat-card-header>
@@ -39,7 +39,7 @@ import { GroupService } from '../../../core/services/group.service';
               {{ message }}
             </div>
 
-            <button mat-raised-button color="primary" type="submit" [disabled]="joinForm.invalid || loading" class="full-width">
+            <button mat-raised-button class="qf-btn-primary full-width" type="submit" [disabled]="joinForm.invalid || loading">
               {{ loading ? 'Uniéndose...' : 'Unirse' }}
             </button>
           </form>
@@ -69,13 +69,13 @@ import { GroupService } from '../../../core/services/group.service';
       margin: 16px 0;
       padding: 12px;
       border-radius: 4px;
-      background-color: #e3f2fd;
-      color: #1976d2;
+      background-color: rgba(162, 211, 194, 0.25);
+      color: #1a5c4a;
     }
 
     .message.error {
-      background-color: #ffebee;
-      color: #c62828;
+      background-color: rgba(203, 37, 70, 0.12);
+      color: var(--qf-primary);
     }
   `]
 })

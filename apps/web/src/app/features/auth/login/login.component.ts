@@ -21,8 +21,8 @@ import { AuthService } from '../../../core/services/auth.service';
     MatButtonModule
   ],
   template: `
-    <div class="login-container">
-      <mat-card class="login-card">
+    <div class="qf-page login-container">
+      <mat-card class="qf-surface login-card">
         <mat-card-header>
           <mat-card-title>QuedaFlow</mat-card-title>
           <mat-card-subtitle>Encuentra huecos de horarios entre compañeros</mat-card-subtitle>
@@ -44,7 +44,7 @@ import { AuthService } from '../../../core/services/auth.service';
               {{ message }}
             </div>
 
-            <button mat-raised-button color="primary" type="submit" [disabled]="loginForm.invalid || loading" class="full-width">
+            <button mat-raised-button class="qf-btn-primary full-width" type="submit" [disabled]="loginForm.invalid || loading">
               {{ loading ? 'Enviando...' : 'Enviar Magic Link' }}
             </button>
           </form>
@@ -58,7 +58,6 @@ import { AuthService } from '../../../core/services/auth.service';
       justify-content: center;
       align-items: center;
       min-height: 100vh;
-      padding: 16px;
       box-sizing: border-box;
     }
 
@@ -75,13 +74,13 @@ import { AuthService } from '../../../core/services/auth.service';
       margin: 16px 0;
       padding: 12px;
       border-radius: 4px;
-      background-color: #e3f2fd;
-      color: #1976d2;
+      background-color: rgba(162, 211, 194, 0.25);
+      color: #1a5c4a;
     }
 
     .message.error {
-      background-color: #ffebee;
-      color: #c62828;
+      background-color: rgba(203, 37, 70, 0.12);
+      color: var(--qf-primary);
     }
 
     mat-card-content {

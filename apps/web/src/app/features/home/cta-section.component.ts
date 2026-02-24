@@ -13,10 +13,10 @@ import { MatButtonModule } from '@angular/material/button';
         <h2 class="cta-title">{{ title }}</h2>
         <p class="cta-subtitle">{{ subtitle }}</p>
         <div class="cta-actions">
-          <button mat-raised-button color="primary" [routerLink]="primaryLink">
+          <button mat-raised-button class="qf-btn-primary" [routerLink]="primaryLink">
             {{ primaryLabel }}
           </button>
-          <button *ngIf="secondaryLabel" mat-stroked-button color="primary" [routerLink]="secondaryLink">
+          <button *ngIf="secondaryLabel" mat-stroked-button [routerLink]="secondaryLink">
             {{ secondaryLabel }}
           </button>
         </div>
@@ -25,10 +25,8 @@ import { MatButtonModule } from '@angular/material/button';
   `,
   styles: [`
     .cta {
-      padding: 48px 16px 56px;
-      background: radial-gradient(circle at top left, rgba(63, 81, 181, 0.08), transparent 55%),
-                  radial-gradient(circle at bottom right, rgba(0, 150, 136, 0.08), transparent 55%),
-                  #f5f7fb;
+      padding: clamp(32px, 4vw, 48px) 16px clamp(40px, 5vw, 56px);
+      background: transparent;
     }
 
     .cta-inner {
@@ -42,12 +40,13 @@ import { MatButtonModule } from '@angular/material/button';
       font-size: clamp(1.8rem, 2.3vw, 2.1rem);
       font-weight: 700;
       letter-spacing: -0.02em;
+      color: inherit;
     }
 
     .cta-subtitle {
       margin: 0 0 24px 0;
       font-size: 1rem;
-      color: #555;
+      color: var(--qf-text-muted);
     }
 
     .cta-actions {

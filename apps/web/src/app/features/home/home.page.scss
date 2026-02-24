@@ -1,61 +1,68 @@
+/* Home: layout and section structure. Colors from global tokens. */
 .home {
   min-height: 100vh;
-  background: radial-gradient(circle at top left, #f5f7ff 0, #ffffff 40%, #f9fafb 80%);
-  color: #111827;
-  font-family: Roboto, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
-.section {
-  padding: 32px 16px 40px;
-  max-width: 1120px;
+/* Hero: full-bleed on dark background, content centered with max-width */
+.qf-hero {
+  padding: clamp(32px, 6vw, 56px) clamp(16px, 4vw, 24px);
+  max-width: 1100px;
   margin: 0 auto;
+}
+
+/* Sections: inside .qf-surface, so text is dark; spacing and typography */
+.qf-section {
+  max-width: 1100px;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: clamp(24px, 4vw, 40px);
+
+  &:first-of-type.qf-surface {
+    margin-top: clamp(24px, 4vw, 48px);
+  }
 }
 
 .section-header {
   text-align: center;
-  margin-bottom: 28px;
+  margin-bottom: clamp(20px, 3vw, 28px);
 }
 
 .section-header h2 {
   margin: 0 0 8px 0;
-  font-size: clamp(1.6rem, 2vw, 1.9rem);
+  font-size: clamp(1.5rem, 2vw, 1.9rem);
   font-weight: 600;
+  color: inherit;
 }
 
 .section-header p {
   margin: 0;
-  font-size: 0.98rem;
-  color: #555;
+  font-size: clamp(0.9rem, 1.2vw, 1rem);
 }
 
-.cards-grid {
+/* How it works: cards grid */
+.how-it-works .cards-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
+  gap: clamp(16px, 2.5vw, 24px);
 }
 
 @media (max-width: 960px) {
-  .cards-grid {
+  .how-it-works .cards-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 700px) {
-  .cards-grid {
+  .how-it-works .cards-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
-.differential {
-  background: #f5f7fb;
-  border-top: 1px solid #e5e7eb;
-  border-bottom: 1px solid #e5e7eb;
-}
-
+/* Differential: 2-col grid */
 .differential-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
+  gap: clamp(16px, 2.5vw, 24px);
 }
 
 @media (max-width: 900px) {
@@ -75,29 +82,26 @@
   margin: 0 0 8px 0;
   font-size: 1rem;
   font-weight: 600;
+  color: inherit;
 }
 
 .diff-card p {
   margin: 0;
   font-size: 0.95rem;
-  color: #555;
 }
 
 .diff-card mat-icon {
   font-size: 20px;
   width: 20px;
   height: 20px;
-  color: #3f51b5;
+  color: var(--qf-primary);
 }
 
-.demo {
-  padding-bottom: 32px;
-}
-
+/* Demo: two-column layout */
 .demo-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-  gap: 32px;
+  gap: clamp(24px, 3vw, 40px);
   align-items: center;
 }
 
@@ -109,14 +113,14 @@
 
 .demo-copy h2 {
   margin: 0 0 12px 0;
-  font-size: clamp(1.5rem, 1.9vw, 1.8rem);
+  font-size: clamp(1.4rem, 1.8vw, 1.75rem);
   font-weight: 600;
+  color: inherit;
 }
 
 .demo-copy p {
   margin: 0 0 18px 0;
-  color: #555;
-  font-size: 0.97rem;
+  font-size: clamp(0.9rem, 1.1vw, 1rem);
 }
 
 .demo-list {
@@ -132,15 +136,16 @@
 .demo-list li {
   display: flex;
   align-items: center;
-  gap: 6px;
-  color: #444;
+  gap: 8px;
+  color: inherit;
 }
 
 .demo-list mat-icon {
-  color: #4caf50;
+  color: var(--qf-success);
   font-size: 18px;
   width: 18px;
   height: 18px;
+  flex-shrink: 0;
 }
 
 .demo-visual {
@@ -151,12 +156,12 @@
 .demo-placeholder {
   width: 100%;
   max-width: 420px;
-  border-radius: 18px;
+  border-radius: 16px;
   padding: 16px 14px 14px;
-  background: radial-gradient(circle at top left, rgba(63, 81, 181, 0.12), transparent 60%),
-              linear-gradient(135deg, #0f172a, #1f2937);
-  color: #e5e7eb;
-  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.6);
+  background: linear-gradient(135deg, var(--qf-bg), color-mix(in srgb, var(--qf-bg) 85%, #1a1528));
+  color: var(--qf-text-on-dark);
+  box-shadow: var(--qf-shadow);
+  border: 1px solid var(--qf-border-on-dark);
 }
 
 .demo-header {
@@ -168,10 +173,10 @@
 }
 
 .demo-badge {
-  padding: 2px 8px;
+  padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(251, 191, 36, 0.2);
-  color: #facc15;
+  background: rgba(255, 210, 54, 0.2);
+  color: var(--qf-warning);
   font-size: 0.75rem;
 }
 
@@ -190,32 +195,32 @@
 
 .demo-day-label {
   font-size: 0.8rem;
-  color: #9ca3af;
+  color: var(--qf-text-muted-on-dark);
 }
 
 .demo-slot {
   height: 6px;
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.45);
+  background: var(--qf-border-on-dark);
 }
 
 .demo-slot-high {
-  background: linear-gradient(90deg, #22c55e, #4ade80);
+  background: linear-gradient(90deg, var(--qf-success), color-mix(in srgb, var(--qf-success) 80%, white));
 }
 
 .demo-slot-medium {
-  background: linear-gradient(90deg, #facc15, #fde047);
+  background: linear-gradient(90deg, var(--qf-warning), color-mix(in srgb, var(--qf-warning) 80%, white));
 }
 
 .demo-slot-low {
-  background: linear-gradient(90deg, #f97316, #fb923c);
+  background: linear-gradient(90deg, var(--qf-secondary), color-mix(in srgb, var(--qf-secondary) 80%, white));
 }
 
 .demo-legend {
   display: flex;
   justify-content: space-between;
   font-size: 0.78rem;
-  color: #9ca3af;
+  color: var(--qf-text-muted-on-dark);
 }
 
 .demo-legend .dot {
@@ -227,15 +232,15 @@
 }
 
 .demo-legend .dot.high {
-  background: #22c55e;
+  background: var(--qf-success);
 }
 
 .demo-legend .dot.medium {
-  background: #facc15;
+  background: var(--qf-warning);
 }
 
 .demo-legend .dot.low {
-  background: #f97316;
+  background: var(--qf-secondary);
 }
 
 @media (max-width: 600px) {
@@ -245,21 +250,22 @@
   }
 }
 
+/* Footer: on dark background, muted text */
 .footer {
-  border-top: 1px solid #e5e7eb;
-  padding: 14px 16px 18px;
-  background: #ffffff;
+  padding: clamp(14px, 3vw, 20px) clamp(16px, 4vw, 24px);
+  margin-top: clamp(24px, 4vw, 48px);
+  border-top: 1px solid var(--qf-border-on-dark);
+  color: var(--qf-text-muted-on-dark);
 }
 
 .footer-inner {
-  max-width: 1120px;
+  max-width: 1100px;
   margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   font-size: 0.85rem;
-  color: #6b7280;
 }
 
 .footer-links {
@@ -274,6 +280,7 @@
 
 .footer a:hover {
   text-decoration: underline;
+  color: var(--qf-text-on-dark);
 }
 
 @media (max-width: 640px) {
@@ -282,4 +289,3 @@
     align-items: flex-start;
   }
 }
-

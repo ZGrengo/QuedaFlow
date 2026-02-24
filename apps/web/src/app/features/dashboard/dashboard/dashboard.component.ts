@@ -30,8 +30,8 @@ import { GroupService, Group } from '../../../core/services/group.service';
     MatSnackBarModule
   ],
   template: `
-    <div class="dashboard">
-      <mat-toolbar color="primary" class="toolbar">
+    <div class="dashboard qf-page">
+      <mat-toolbar class="qf-toolbar toolbar">
         <span class="title">QuedaFlow</span>
         <span class="spacer"></span>
         <span class="user-email">{{ userEmail }}</span>
@@ -45,7 +45,7 @@ import { GroupService, Group } from '../../../core/services/group.service';
         <p class="subtitle">Crea un grupo o únete a uno existente para encontrar huecos entre compañeros.</p>
 
         <div class="cards">
-          <mat-card class="action-card">
+          <mat-card class="qf-surface action-card">
             <mat-card-header>
               <mat-card-title>
                 <mat-icon>add_circle</mat-icon>
@@ -54,7 +54,7 @@ import { GroupService, Group } from '../../../core/services/group.service';
               <mat-card-subtitle>Crea un nuevo grupo y comparte el código con tus compañeros.</mat-card-subtitle>
             </mat-card-header>
             <mat-card-actions>
-              <button *ngIf="canCreateGroup" mat-raised-button color="primary" routerLink="/create-group">
+              <button *ngIf="canCreateGroup" mat-raised-button class="qf-btn-primary" routerLink="/create-group">
                 Crear grupo
               </button>
               <div *ngIf="!canCreateGroup" class="limit-wrap">
@@ -67,7 +67,7 @@ import { GroupService, Group } from '../../../core/services/group.service';
             </mat-card-actions>
           </mat-card>
 
-          <mat-card class="action-card">
+          <mat-card class="qf-surface action-card">
             <mat-card-header>
               <mat-card-title>
                 <mat-icon>group_add</mat-icon>
@@ -85,7 +85,7 @@ import { GroupService, Group } from '../../../core/services/group.service';
                 <div *ngIf="joinMessage" class="message" [class.error]="joinError">
                   {{ joinMessage }}
                 </div>
-                <button mat-raised-button color="accent" type="submit" [disabled]="joinForm.invalid || joinLoading" class="full-width">
+                <button mat-raised-button class="qf-btn-primary full-width" type="submit" [disabled]="joinForm.invalid || joinLoading">
                   {{ joinLoading ? 'Uniéndose...' : 'Unirse' }}
                 </button>
               </form>
@@ -93,17 +93,17 @@ import { GroupService, Group } from '../../../core/services/group.service';
           </mat-card>
         </div>
 
-        <section class="active-groups">
+        <section class="active-groups qf-section">
           <h2 class="section-title">
             <mat-icon>groups</mat-icon>
             Grupos activos
           </h2>
-          <p *ngIf="myGroupsLoading" class="loading-groups">Cargando grupos...</p>
-          <div *ngIf="!myGroupsLoading && myGroups.length === 0" class="no-groups">
+          <p *ngIf="myGroupsLoading" class="loading-groups qf-muted">Cargando grupos...</p>
+          <div *ngIf="!myGroupsLoading && myGroups.length === 0" class="no-groups qf-muted">
             No tienes grupos aún. Crea uno o únete con un código arriba.
           </div>
           <div *ngIf="!myGroupsLoading && myGroups.length > 0" class="groups-list">
-            <div *ngFor="let group of myGroups" class="group-item">
+            <div *ngFor="let group of myGroups" class="group-item qf-surface">
               <a [routerLink]="['/g', group.code]" class="group-item-link">
                 <span class="group-name">{{ group.name }}</span>
                 <span class="group-code">Código: {{ group.code }}</span>
@@ -132,7 +132,6 @@ import { GroupService, Group } from '../../../core/services/group.service';
   styles: [`
     .dashboard {
       min-height: 100vh;
-      background: #f5f5f5;
     }
 
     .toolbar {
@@ -164,10 +163,11 @@ import { GroupService, Group } from '../../../core/services/group.service';
     .welcome {
       margin: 0 0 8px 0;
       font-size: 1.75rem;
+      color: var(--qf-text-on-dark);
     }
 
     .subtitle {
-      color: #666;
+      color: var(--qf-text-muted-on-dark);
       margin: 0 0 32px 0;
     }
 
@@ -191,6 +191,7 @@ import { GroupService, Group } from '../../../core/services/group.service';
       font-size: 28px;
       width: 28px;
       height: 28px;
+      color: var(--qf-primary);
     }
 
     .action-card mat-card-actions,
@@ -209,8 +210,8 @@ import { GroupService, Group } from '../../../core/services/group.service';
       gap: 8px;
       margin: 0 0 12px 0;
       padding: 12px;
-      background: #fff3e0;
-      color: #e65100;
+      background: rgba(255, 210, 54, 0.15);
+      color: #8b6914;
       border-radius: 4px;
       font-size: 0.875rem;
     }
@@ -230,20 +231,19 @@ import { GroupService, Group } from '../../../core/services/group.service';
       margin: 12px 0;
       padding: 10px;
       border-radius: 4px;
-      background: #e3f2fd;
-      color: #1976d2;
+      background: rgba(162, 211, 194, 0.25);
+      color: #1a5c4a;
       font-size: 0.875rem;
     }
 
     .message.error {
-      background: #ffebee;
-      color: #c62828;
+      background: rgba(203, 37, 70, 0.12);
+      color: var(--qf-primary);
     }
 
     .active-groups {
-      margin-top: 48px;
       padding-top: 24px;
-      border-top: 1px solid #e0e0e0;
+      border-top: 1px solid var(--qf-border-on-dark);
     }
 
     .section-title {
@@ -252,18 +252,14 @@ import { GroupService, Group } from '../../../core/services/group.service';
       gap: 8px;
       margin: 0 0 16px 0;
       font-size: 1.25rem;
+      color: var(--qf-text-on-dark);
     }
 
     .section-title mat-icon {
       font-size: 28px;
       width: 28px;
       height: 28px;
-    }
-
-    .loading-groups,
-    .no-groups {
-      color: #666;
-      margin: 0;
+      color: var(--qf-primary);
     }
 
     .groups-list {
@@ -277,15 +273,14 @@ import { GroupService, Group } from '../../../core/services/group.service';
       align-items: center;
       gap: 8px;
       padding: 0;
-      background: #fff;
-      border-radius: 8px;
-      border: 1px solid #e0e0e0;
-      transition: background 0.2s, border-color 0.2s;
+      border-radius: 12px;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      transition: box-shadow 0.2s, border-color 0.2s;
       overflow: hidden;
     }
 
     .group-item:hover {
-      border-color: #bdbdbd;
+      box-shadow: var(--qf-shadow-soft);
     }
 
     .group-item-link {
@@ -300,21 +295,22 @@ import { GroupService, Group } from '../../../core/services/group.service';
     }
 
     .group-item-link:hover {
-      background: #f5f5f5;
+      background: var(--qf-surface-2);
     }
 
     .group-name {
       font-weight: 500;
       flex: 1;
+      color: #1a1a1e;
     }
 
     .group-code {
       font-size: 0.875rem;
-      color: #666;
+      color: var(--qf-text-muted);
     }
 
     .group-arrow {
-      color: #666;
+      color: var(--qf-text-muted);
     }
 
     .leave-btn {
