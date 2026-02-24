@@ -41,7 +41,7 @@ import { minToHhmm } from '@domain/index';
             <mat-card *ngFor="let slot of topSlots" [class]="'slot-card slot-' + slot.color">
               <mat-card-content>
                 <div class="slot-header">
-                  <strong>{{ slot.date }}</strong>
+                  <strong>{{ slot.date | date:'dd/MM/yyyy' }}</strong>
                   <span>{{ minToHhmm(slot.start_min) }} - {{ minToHhmm(slot.end_min) }}</span>
                 </div>
                 <div class="slot-info">

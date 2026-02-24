@@ -170,6 +170,52 @@ function isFreeDay(text: string): boolean {
 }
 
 /**
+ * Parses a time range and pushes one shift to shifts (or an issue to issues).
+ * @returns true if a shift was pushed, false if an issue was pushed
+ */
+function pushShiftFromTimeRange(
+  shifts: DetectedShift[],
+  issues: ParseIssue[],
+  line: string,
+  timeRange: [string, string],
+  dateISO: string
+): boolean {
+  const [startHHMM, endHHMM] = timeRange;
+  const startMin = hhmmToMinSafe(startHHMM, false);
+  const endMin = hhmmToMinSafe(endHHMM, true);
+
+  if (startMin === null || endMin === null) {
+    issues.push({
+      line,
+      reason: `Formato de hora inválido: ${startHHMM} - ${endHHMM}`
+    });
+    return false;
+  }
+
+  const crossesMidnight = endMin < startMin || endMin >= 1440;
+  let normalizedEndMin = endMin;
+  if (endMin > 1440) {
+    normalizedEndMin = endMin % 1440;
+  }
+
+  if (startMin < 0 || startMin >= 1440 || normalizedEndMin < 0 || normalizedEndMin > 1440) {
+    issues.push({
+      line,
+      reason: `Rango de horas fuera de rango válido: ${startHHMM} - ${endHHMM}`
+    });
+    return false;
+  }
+
+  shifts.push({
+    dateISO,
+    startMin,
+    endMin: normalizedEndMin,
+    crossesMidnight
+  });
+  return true;
+}
+
+/**
  * Parses Mapal-like OCR text to extract work shifts
  * @param text - Raw OCR text
  * @param planningStartISO - Planning start date (YYYY-MM-DD)
@@ -194,18 +240,34 @@ export function parseMapalOcrText(
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    const normalizedLine = normalizeTimeString(line);
 
-    // Check for free day
-    if (isFreeDay(line)) {
-      // Reset current date if we see a free day marker
+    // Check for free day (only if line doesn't look like "dd/mm HH:mm - HH:mm")
+    if (isFreeDay(line) && !extractTimeRange(line)) {
       currentDate = null;
       continue;
     }
 
-    // Try to extract date
     const dateMatch = extractDate(line);
-    if (dateMatch) {
+    const timeRange = extractTimeRange(line);
+
+    // Same-line format: "26/02 17:00 - 20:00 e COC" → date and time on one line
+    if (dateMatch && timeRange) {
+      const [day, month] = dateMatch;
+      const resolvedDate = resolveDateWithYear(day, month, planningStartISO, planningEndISO);
+      if (!resolvedDate) {
+        issues.push({
+          line,
+          reason: `Fecha ${day}/${month} fuera del rango de planificación (${planningStartISO} - ${planningEndISO})`
+        });
+        continue;
+      }
+      currentDate = resolvedDate;
+      pushShiftFromTimeRange(shifts, issues, line, timeRange, resolvedDate);
+      continue;
+    }
+
+    // Date only (e.g. "25/02" or "26/02" on its own)
+    if (dateMatch && !timeRange) {
       const [day, month] = dateMatch;
       const resolvedDate = resolveDateWithYear(day, month, planningStartISO, planningEndISO);
       if (resolvedDate) {
@@ -217,12 +279,10 @@ export function parseMapalOcrText(
         });
         currentDate = null;
       }
-      // Continue to next line to look for time range
       continue;
     }
 
-    // Try to extract time range
-    const timeRange = extractTimeRange(line);
+    // Time range only (use current date from previous line)
     if (timeRange) {
       if (!currentDate) {
         issues.push({
@@ -231,44 +291,7 @@ export function parseMapalOcrText(
         });
         continue;
       }
-
-      const [startHHMM, endHHMM] = timeRange;
-      const startMin = hhmmToMinSafe(startHHMM, false);
-      const endMin = hhmmToMinSafe(endHHMM, true);
-
-      if (startMin === null || endMin === null) {
-        issues.push({
-          line,
-          reason: `Formato de hora inválido: ${startHHMM} - ${endHHMM}`
-        });
-        continue;
-      }
-
-      // Check if crosses midnight
-      const crossesMidnight = endMin < startMin || endMin >= 1440;
-
-      // Normalize endMin if it's >= 1440 (e.g., 24:00 becomes 00:00 next day)
-      // But keep 1440 as-is (it means end of day)
-      let normalizedEndMin = endMin;
-      if (endMin > 1440) {
-        normalizedEndMin = endMin % 1440;
-      }
-
-      // Validate range
-      if (startMin < 0 || startMin >= 1440 || normalizedEndMin < 0 || normalizedEndMin > 1440) {
-        issues.push({
-          line,
-          reason: `Rango de horas fuera de rango válido: ${startHHMM} - ${endHHMM}`
-        });
-        continue;
-      }
-
-      shifts.push({
-        dateISO: currentDate,
-        startMin,
-        endMin: normalizedEndMin,
-        crossesMidnight
-      });
+      pushShiftFromTimeRange(shifts, issues, line, timeRange, currentDate);
     }
   }
 

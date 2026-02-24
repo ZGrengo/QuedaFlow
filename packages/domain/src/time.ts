@@ -13,12 +13,15 @@ export function hhmmToMin(hhmm: string): number {
 
 /**
  * Converts minutes from midnight to HH:MM format
- * @param min - Minutes from midnight (0-1439)
- * @returns Time in HH:MM format
+ * @param min - Minutes from midnight (0-1439, or 1440 for end-of-day display)
+ * @returns Time in HH:MM format; 1440 is displayed as "24:00"
  */
 export function minToHhmm(min: number): string {
-  if (min < 0 || min >= 1440) {
-    throw new Error(`Invalid minutes: ${min}. Must be 0-1439`);
+  if (min < 0 || min > 1440) {
+    throw new Error(`Invalid minutes: ${min}. Must be 0-1440`);
+  }
+  if (min === 1440) {
+    return '24:00';
   }
   const hours = Math.floor(min / 60);
   const minutes = min % 60;

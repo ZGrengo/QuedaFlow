@@ -17,6 +17,7 @@ import { GroupService } from '../../../core/services/group.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { AvailabilityBlock } from '@domain/index';
 import { minToHhmm, hhmmToMin } from '@domain/index';
+import { formatDateDDMMYYYY } from '../../../core/utils/date-format';
 
 @Component({
   selector: 'app-blocks-manager',
@@ -108,7 +109,7 @@ import { minToHhmm, hhmmToMin } from '@domain/index';
           <div *ngFor="let block of myBlocks" class="block-item">
             <mat-chip-set>
               <mat-chip>{{ block.type }}</mat-chip>
-              <mat-chip>{{ block.date }}</mat-chip>
+              <mat-chip>{{ block.date | date:'dd/MM/yyyy' }}</mat-chip>
               <mat-chip>{{ minToHhmm(block.start_min) }} - {{ minToHhmm(block.end_min) }}</mat-chip>
             </mat-chip-set>
             <button mat-icon-button color="warn" (click)="deleteBlock(block.id!)">
@@ -188,6 +189,7 @@ export class BlocksManagerComponent implements OnInit {
   userId = '';
   preferredCount = 0;
   minToHhmm = minToHhmm;
+  formatDateDDMMYYYY = formatDateDDMMYYYY;
   minDate: Date = new Date();
   maxDate: Date = new Date();
   planningRangeHint = '';
@@ -225,7 +227,7 @@ export class BlocksManagerComponent implements OnInit {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         if (this.minDate < today) this.minDate = today;
-        this.planningRangeHint = `Rango: ${group.planning_start_date} a ${group.planning_end_date}`;
+        this.planningRangeHint = `Rango: ${formatDateDDMMYYYY(group.planning_start_date)} a ${formatDateDDMMYYYY(group.planning_end_date)}`;
         this.loadMyBlocks();
       },
       error: (err) => {

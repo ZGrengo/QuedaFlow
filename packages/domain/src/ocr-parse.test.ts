@@ -184,6 +184,42 @@ Libre
     });
   });
 
+  describe('Mapal same-line format (date + time on one line)', () => {
+    const febPlanningStart = '2024-02-01';
+    const febPlanningEnd = '2024-03-31';
+
+    it('parses "dd/mm HH:mm - HH:mm e COC" lines', () => {
+      const text = `26/02 17:00 - 20:00 e COC
+26/02 21:30 - 01:00 e COC`;
+      const result = parseMapalOcrText(text, febPlanningStart, febPlanningEnd);
+      expect(result.shifts).toHaveLength(2);
+      expect(result.shifts[0].dateISO).toBe('2024-02-26');
+      expect(result.shifts[0].startMin).toBe(1020); // 17:00
+      expect(result.shifts[0].endMin).toBe(1200); // 20:00
+      expect(result.shifts[0].crossesMidnight).toBe(false);
+      expect(result.shifts[1].dateISO).toBe('2024-02-26');
+      expect(result.shifts[1].startMin).toBe(1290); // 21:30
+      expect(result.shifts[1].endMin).toBe(60); // 01:00
+      expect(result.shifts[1].crossesMidnight).toBe(true);
+    });
+
+    it('parses mix of same-line and date-only then time lines', () => {
+      const text = `25/02
+JU CRURS
+26/02 17:00 - 20:00 e COC
+26/02 21:30 - 01:00 e COC
+27/02 20:30 - 01:00 e COC`;
+      const result = parseMapalOcrText(text, febPlanningStart, febPlanningEnd);
+      expect(result.shifts).toHaveLength(3);
+      expect(result.shifts[0].dateISO).toBe('2024-02-26');
+      expect(result.shifts[0].endMin).toBe(1200);
+      expect(result.shifts[1].dateISO).toBe('2024-02-26');
+      expect(result.shifts[1].crossesMidnight).toBe(true);
+      expect(result.shifts[2].dateISO).toBe('2024-02-27');
+      expect(result.shifts[2].crossesMidnight).toBe(true);
+    });
+  });
+
   describe('real-world OCR sample', () => {
     it('parses Mapal-like format with extra text', () => {
       const text = `LUNES 15/01

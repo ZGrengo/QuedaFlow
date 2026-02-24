@@ -21,11 +21,12 @@ describe('time utilities', () => {
       expect(minToHhmm(0)).toBe('00:00');
       expect(minToHhmm(570)).toBe('09:30');
       expect(minToHhmm(1439)).toBe('23:59');
+      expect(minToHhmm(1440)).toBe('24:00'); // end of day (for display)
     });
 
     it('throws on invalid minutes', () => {
       expect(() => minToHhmm(-1)).toThrow();
-      expect(() => minToHhmm(1440)).toThrow();
+      expect(() => minToHhmm(1441)).toThrow();
     });
   });
 
