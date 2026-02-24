@@ -100,9 +100,15 @@ npm run test:watch
 En Supabase Dashboard:
 1. Ve a SQL Editor
 2. Ejecuta las migraciones en orden:
-   - `001_initial_schema.sql`
+   - `001_schema.sql`
    - `002_rls_policies.sql`
    - `003_functions_and_triggers.sql`
+   - `004_grants_public_schema.sql`
+   - `005_create_group_rpc.sql`
+   - `006_fix_generate_group_code_ambiguous.sql`
+   - `007_join_group_by_code_rpc.sql`
+   - `008_group_planning_settings.sql`
+   - `009_rls_and_triggers_validations.sql`
 
 O usando Supabase CLI:
 
@@ -131,9 +137,9 @@ En Supabase Dashboard:
 ### Políticas Clave
 
 - **profiles**: Usuarios ven/modifican solo su propio perfil
-- **groups**: Usuarios ven grupos donde son miembros
+- **groups**: Usuarios ven grupos donde son miembros; solo host puede actualizar
 - **group_members**: Usuarios ven miembros de sus grupos
-- **availability_blocks**: Usuarios insertan/modifican solo sus propios bloques
+- **availability_blocks**: Usuarios insertan/modifican solo sus propios bloques; fecha debe estar en rango planning y no en pasado
 - **group_blocked_windows**: Solo host puede gestionar ventanas bloqueadas
 
 ## Decisiones Técnicas
@@ -169,19 +175,23 @@ En Supabase Dashboard:
 - **availability_blocks**: Bloques de disponibilidad (WORK/UNAVAILABLE/PREFERRED)
 - **group_blocked_windows**: Ventanas bloqueadas por grupo
 
-### Validaciones
+### Validaciones y Reglas del Host
 
-- Máximo 3 bloques PREFERRED por usuario por grupo (trigger)
-- Bloques que cruzan medianoche se dividen automáticamente
-- Buffer aplicado a bloques WORK antes de guardar
-- Bloques solapados se fusionan automáticamente
+- **Ventana de planificación**: El host define `planning_start_date` y `planning_end_date`. Los bloques solo pueden crearse dentro de ese rango y el planner solo calcula dentro de él.
+- **No bloques en pasado**: No se permiten bloques con `date < today` (todos los tipos).
+- **Buffer antes de trabajo**: El host define `buffer_before_work_min` (default 20). Para el cálculo, los bloques WORK "ocupan" también ese buffer antes del inicio (no se modifica el bloque guardado).
+- **Blocked windows**: El host define franjas excluidas del cálculo (ej. 00:00-07:59).
+- **Máximo 3 PREFERRED** por usuario dentro del rango planning (trigger).
+- **Duración mínima reunión**: `min_meeting_duration_min` (default 60) para rankeo futuro.
 
 ## Rutas
 
 - `/login` - Autenticación con magic link
 - `/g/:code` - Vista del grupo
-- `/g/:code/blocks` - Gestión de bloques de disponibilidad
+- `/g/:code/settings` - Configuración del grupo (solo host)
+- `/g/:code/blocks` - Gestión de bloques de ocupación
 - `/g/:code/planner` - Vista de mejores huecos calculados
+- `/g/:code/import` - Importar horarios por OCR
 
 ## Roadmap
 
@@ -194,7 +204,7 @@ En Supabase Dashboard:
 
 ### Próximas Features
 
-- [ ] **OCR para bloques**: Carpeta `apps/web/src/app/features/ocr/` preparada
+- [x] **OCR para bloques**: Importar horarios desde capturas de pantalla (Mapal-like)
 - [ ] **Emails**: Notificaciones cuando hay nuevos huecos
 - [ ] **Exportar calendario**: iCal export
 - [ ] **Múltiples grupos**: Dashboard con lista de grupos
@@ -221,7 +231,7 @@ apps/web/
 │   │   │   ├── group/          # Group detail
 │   │   │   ├── blocks/         # Blocks manager
 │   │   │   ├── planner/        # Planner view
-│   │   │   └── ocr/            # (Placeholder para futuro)
+│   │   │   └── ocr/            # Import OCR feature
 │   │   └── app.routes.ts       # Routing configuration
 │   └── environments/           # Environment variables
 
@@ -230,14 +240,21 @@ packages/domain/
 │   ├── time.ts                 # Utilidades de tiempo
 │   ├── blocks.ts                # Manipulación de bloques
 │   ├── compute.ts               # Cálculo de slots
+│   ├── ocr-parse.ts             # Parser OCR para Mapal-like
 │   └── types.ts                 # TypeScript interfaces
 └── tests/                       # Tests unitarios
 
 supabase/
 └── migrations/
-    ├── 001_initial_schema.sql
+    ├── 001_schema.sql
     ├── 002_rls_policies.sql
-    └── 003_functions_and_triggers.sql
+    ├── 003_functions_and_triggers.sql
+    ├── 004_grants_public_schema.sql
+    ├── 005_create_group_rpc.sql
+    ├── 006_fix_generate_group_code_ambiguous.sql
+    ├── 007_join_group_by_code_rpc.sql
+    ├── 008_group_planning_settings.sql
+    └── 009_rls_and_triggers_validations.sql
 ```
 
 ## Checklist de Implementación
@@ -287,8 +304,70 @@ Es normal ver warnings sobre paquetes deprecados y vulnerabilidades al ejecutar 
 - Revisa las policies en `002_rls_policies.sql`
 
 ### Error: Maximum 3 PREFERRED blocks
-- Es una validación intencional
+- Es una validación intencional (máx 3 dentro del rango planning)
 - Elimina un bloque PREFERRED existente antes de añadir uno nuevo
+
+### Error: Fuera del rango de planificación / fecha pasada
+- Los bloques deben tener fecha dentro de `planning_start_date` y `planning_end_date` del grupo
+- No se permiten fechas pasadas
+- El host puede ampliar el rango en Configuración del grupo
+
+## Importar Horarios por OCR
+
+### Descripción
+
+La funcionalidad de Import OCR permite subir una captura de pantalla de tu app de horarios (formato Mapal-like) y el sistema detectará automáticamente los turnos de trabajo.
+
+### Cómo Usar
+
+1. **Accede a la página de importación**: Navega a `/g/:code/import` desde cualquier grupo
+2. **Sube una imagen**: Selecciona un archivo PNG o JPG con la captura de tu horario
+3. **Analiza con OCR**: Haz clic en "Analizar con OCR" y espera a que procese (puede tardar unos segundos)
+4. **Revisa y edita**: El sistema mostrará los turnos detectados. Puedes:
+   - Editar fecha, hora de inicio y fin de cada turno
+   - Eliminar turnos incorrectos
+   - Añadir turnos manualmente
+5. **Guarda**: Haz clic en "Guardar turnos" para insertar los bloques WORK en Supabase
+
+### Limitaciones
+
+- **Calidad del OCR**: El OCR puede fallar con imágenes de baja calidad, texto borroso o fuentes muy pequeñas. Siempre revisa los turnos detectados antes de guardar.
+- **Formato esperado**: El parser está optimizado para formato Mapal-like con:
+  - Fechas en formato `dd/mm` o `dd/mm/yyyy`
+  - Rangos de horas en formato `HH:mm - HH:mm`
+  - Marcadores de "Día libre" o "Libre"
+- **Validaciones**: Los turnos deben cumplir las mismas reglas que los bloques manuales:
+  - Fecha dentro del rango de planificación del grupo
+  - Fecha no en el pasado
+  - Horas válidas (00:00 - 23:59)
+- **Turnos que cruzan medianoche**: Se detectan automáticamente y se dividen en 2 bloques al guardar
+
+### Ejemplo de Texto OCR
+
+El parser puede procesar texto como:
+
+```
+LUNES 15/01
+11:00 - 17:00 COC
+MARTES 16/01
+Día libre
+MIÉRCOLES 17/01
+09:00 - 13:00
+14:00 - 18:00
+```
+
+### Tecnología
+
+- **Tesseract.js**: OCR ejecutado completamente en el navegador (no se suben imágenes al servidor)
+- **Parser personalizado**: Lógica en `packages/domain/src/ocr-parse.ts` con tests completos
+- **Normalización de errores OCR**: Corrige errores comunes (O→0, I→1, guiones raros, etc.)
+
+### Debug
+
+Si el OCR no detecta turnos correctamente:
+1. Revisa el panel "Texto OCR (debug)" para ver el texto crudo extraído
+2. Verifica que las fechas y horas están en el formato esperado
+3. Intenta mejorar la calidad de la imagen (más contraste, mejor resolución)
 
 ## Contribuir
 

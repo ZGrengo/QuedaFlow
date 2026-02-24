@@ -11,6 +11,9 @@ export interface Group {
   buffer_before_work_min: number;
   yellow_threshold: number;
   target_people: number | null;
+  planning_start_date: string;
+  planning_end_date: string;
+  min_meeting_duration_min: number;
   created_at: string;
 }
 
@@ -117,7 +120,7 @@ export class GroupService {
 
   updateSettings(
     groupId: string,
-    settings: Partial<Pick<Group, 'buffer_before_work_min' | 'yellow_threshold' | 'target_people' | 'name'>>
+    settings: Partial<Pick<Group, 'buffer_before_work_min' | 'yellow_threshold' | 'target_people' | 'name' | 'planning_start_date' | 'planning_end_date' | 'min_meeting_duration_min'>>
   ): Observable<Group> {
     return from(
       this.supabase

@@ -11,6 +11,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { BlocksService } from '../../../core/services/blocks.service';
 import { GroupService } from '../../../core/services/group.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -32,7 +33,8 @@ import { minToHhmm, hhmmToMin } from '@domain/index';
     MatIconModule,
     MatDatepickerModule,
     MatNativeDateModule,
-    MatChipsModule
+    MatChipsModule,
+    MatSnackBarModule
   ],
   template: `
     <div class="container">
@@ -61,9 +63,11 @@ import { minToHhmm, hhmmToMin } from '@domain/index';
 
               <mat-form-field appearance="outline">
                 <mat-label>Fecha</mat-label>
-                <input matInput [matDatepicker]="picker" formControlName="date" required>
+                <input matInput [matDatepicker]="picker" formControlName="date" required
+                  [min]="minDate" [max]="maxDate">
                 <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
-                <mat-datepicker #picker></mat-datepicker>
+                <mat-datepicker #picker [startAt]="minDate"></mat-datepicker>
+                <mat-hint *ngIf="planningRangeHint">{{ planningRangeHint }}</mat-hint>
               </mat-form-field>
             </div>
 
@@ -83,9 +87,15 @@ import { minToHhmm, hhmmToMin } from '@domain/index';
               Máximo 3 bloques PREFERRED permitidos
             </div>
 
-            <button mat-raised-button color="primary" type="submit" [disabled]="blockForm.invalid || loading">
-              Añadir Bloque
-            </button>
+            <div class="form-actions">
+              <button mat-raised-button color="primary" type="submit" [disabled]="blockForm.invalid || loading">
+                Añadir Bloque
+              </button>
+              <button mat-stroked-button type="button" [routerLink]="['/g', code, 'import']">
+                <mat-icon>image</mat-icon>
+                Importar desde imagen
+              </button>
+            </div>
           </form>
         </mat-card-content>
       </mat-card>
@@ -129,6 +139,22 @@ import { minToHhmm, hhmmToMin } from '@domain/index';
       flex: 1;
     }
 
+    .form-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .form-actions button mat-icon {
+      margin-right: 4px;
+      vertical-align: middle;
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+
     .blocks-list {
       margin-top: 24px;
     }
@@ -162,6 +188,9 @@ export class BlocksManagerComponent implements OnInit {
   userId = '';
   preferredCount = 0;
   minToHhmm = minToHhmm;
+  minDate: Date = new Date();
+  maxDate: Date = new Date();
+  planningRangeHint = '';
 
   constructor(
     private route: ActivatedRoute,
@@ -169,7 +198,8 @@ export class BlocksManagerComponent implements OnInit {
     private fb: FormBuilder,
     private blocksService: BlocksService,
     private groupService: GroupService,
-    private authService: AuthService
+    private authService: AuthService,
+    private snackBar: MatSnackBar
   ) {
     this.blockForm = this.fb.group({
       type: ['WORK', Validators.required],
@@ -190,6 +220,12 @@ export class BlocksManagerComponent implements OnInit {
     this.groupService.getGroup(code).subscribe({
       next: (group) => {
         this.groupId = group.id;
+        this.minDate = new Date(group.planning_start_date);
+        this.maxDate = new Date(group.planning_end_date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (this.minDate < today) this.minDate = today;
+        this.planningRangeHint = `Rango: ${group.planning_start_date} a ${group.planning_end_date}`;
         this.loadMyBlocks();
       },
       error: (err) => {
@@ -210,7 +246,11 @@ export class BlocksManagerComponent implements OnInit {
     this.blocksService.getUserBlocks(this.groupId, this.userId).subscribe({
       next: (blocks) => {
         this.myBlocks = blocks;
-        this.preferredCount = blocks.filter(b => b.type === 'PREFERRED').length;
+        const rangeStart = this.minDate.toISOString().split('T')[0];
+        const rangeEnd = this.maxDate.toISOString().split('T')[0];
+        this.preferredCount = blocks.filter(
+          b => b.type === 'PREFERRED' && b.date >= rangeStart && b.date <= rangeEnd
+        ).length;
       },
       error: (err) => {
         console.error(err);
@@ -221,9 +261,21 @@ export class BlocksManagerComponent implements OnInit {
   async onSubmit() {
     if (this.blockForm.invalid) return;
 
+    this.loading = true;
     const formValue = this.blockForm.value;
     const date = new Date(formValue.date);
     const dateStr = date.toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0];
+
+    if (dateStr < today) {
+      this.loading = false;
+      this.snackBar.open('No se pueden crear bloques en fechas pasadas', 'Cerrar', { duration: 4000 });
+      return;
+    }
+    if (dateStr < this.minDate.toISOString().split('T')[0] || dateStr > this.maxDate.toISOString().split('T')[0]) {
+      this.snackBar.open('La fecha debe estar dentro del rango de planificación del grupo', 'Cerrar', { duration: 4000 });
+      return;
+    }
 
     try {
       const startMin = hhmmToMin(formValue.start_time);
@@ -235,18 +287,22 @@ export class BlocksManagerComponent implements OnInit {
         date: dateStr,
         start_min: startMin,
         end_min: endMin
-      }, 20).toPromise();
+      }).toPromise();
 
       this.blockForm.reset({
         type: 'WORK',
-        date: new Date(),
+        date: this.minDate,
         start_time: '09:00',
         end_time: '17:00'
       });
 
       this.loadMyBlocks();
+      this.loading = false;
+      this.snackBar.open('Bloque añadido correctamente', undefined, { duration: 2000 });
     } catch (error: any) {
-      alert(error.message || 'Error al añadir bloque');
+      const msg = error?.message || error?.error_description || 'Error al añadir bloque';
+      this.snackBar.open(msg.includes('planificación') || msg.includes('pasada') ? msg : 'Error al añadir bloque. Verifica el rango de fechas.', 'Cerrar', { duration: 5000 });
+      this.loading = false;
     }
   }
 

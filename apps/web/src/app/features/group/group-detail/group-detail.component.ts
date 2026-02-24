@@ -36,6 +36,10 @@ import { AuthService } from '../../../core/services/auth.service';
               <mat-icon>schedule</mat-icon>
               Ver Planner
             </button>
+            <button *ngIf="isHost" mat-stroked-button routerLink="/g/{{ group.code }}/settings">
+              <mat-icon>settings</mat-icon>
+              Configuración
+            </button>
           </div>
           <div class="quick-actions" style="margin-top: 16px;">
             <button mat-stroked-button routerLink="/dashboard">
@@ -81,13 +85,14 @@ export class GroupDetailComponent implements OnInit {
   group: Group | null = null;
   loading = true;
   error = '';
+  isHost = false;
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
     private groupService: GroupService,
     private authService: AuthService
-  ) {}
+  ) { }
 
   ngOnInit() {
     const code = this.route.snapshot.paramMap.get('code');
@@ -99,6 +104,9 @@ export class GroupDetailComponent implements OnInit {
     this.groupService.getGroup(code).subscribe({
       next: (group) => {
         this.group = group;
+        this.authService.getCurrentUser().subscribe(user => {
+          this.isHost = user?.id === group.host_user_id;
+        });
         this.loading = false;
       },
       error: (err) => {

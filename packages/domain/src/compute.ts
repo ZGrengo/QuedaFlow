@@ -6,16 +6,36 @@ import {
   GroupMember
 } from './types';
 import { overlaps } from './time';
-import { splitMidnightBlock } from './blocks';
+import { splitMidnightBlock, applyBuffer } from './blocks';
+
+/**
+ * Genera fechas entre start y end (inclusive)
+ */
+function dateRange(start: string, end: string): string[] {
+  const dates: string[] = [];
+  const d = new Date(start);
+  const endDate = new Date(end);
+  while (d <= endDate) {
+    dates.push(d.toISOString().split('T')[0]);
+    d.setDate(d.getDate() + 1);
+  }
+  return dates;
+}
 
 /**
  * Computes available time slots for a group
+ * - Filtra bloques por planning range
+ * - Aplica buffer en WORK solo para cálculo (busy interval extendido)
+ * - Excluye slots en blocked windows
  */
 export function computeSlots(params: ComputeSlotsParams): ComputedSlot[] {
   const {
     members,
     availability_blocks,
     blocked_windows,
+    planning_start_date,
+    planning_end_date,
+    buffer_before_work_min = 20,
     slotSize = 30,
     yellow_threshold = 0.75
   } = params;
@@ -24,13 +44,15 @@ export function computeSlots(params: ComputeSlotsParams): ComputedSlot[] {
     return [];
   }
 
-  // Get all unique dates from availability blocks
-  const dates = new Set<string>();
-  for (const block of availability_blocks) {
-    dates.add(block.date);
-  }
+  // Filtrar bloques dentro del rango de planificación
+  const blocksInRange = availability_blocks.filter(
+    b => b.date >= planning_start_date && b.date <= planning_end_date
+  );
 
-  if (dates.size === 0) {
+  // Fechas a procesar: rango planning
+  const dates = dateRange(planning_start_date, planning_end_date);
+
+  if (dates.length === 0) {
     return [];
   }
 
@@ -42,7 +64,7 @@ export function computeSlots(params: ComputeSlotsParams): ComputedSlot[] {
     const dayOfWeek = new Date(date).getDay();
 
     // Get blocks for this date
-    const dayBlocks = availability_blocks.filter(b => b.date === date);
+    const dayBlocks = blocksInRange.filter(b => b.date === date);
     const dayBlockedWindows = blocked_windows.filter(bw => {
       if (bw.dow === null) return true; // Applies to all days
       return bw.dow === dayOfWeek;
@@ -79,14 +101,20 @@ export function computeSlots(params: ComputeSlotsParams): ComputedSlot[] {
         let isPreferred = false;
 
         for (const block of memberBlocks) {
+          // Para WORK: usar intervalo "busy" extendido con buffer (solo en cálculo)
+          const effectiveBlock =
+            block.type === 'WORK'
+              ? applyBuffer(block, buffer_before_work_min)
+              : block;
+
           const blockOverlaps = (() => {
-            if (block.start_min >= block.end_min) {
-              const splitBlocks = splitMidnightBlock(block);
+            if (effectiveBlock.start_min >= effectiveBlock.end_min) {
+              const splitBlocks = splitMidnightBlock(effectiveBlock);
               return splitBlocks.some(
                 sb => sb.date === slotDate && overlaps(start, end, sb.start_min, sb.end_min)
               );
             }
-            return overlaps(start, end, block.start_min, block.end_min);
+            return overlaps(start, end, effectiveBlock.start_min, effectiveBlock.end_min);
           })();
 
           if (blockOverlaps) {

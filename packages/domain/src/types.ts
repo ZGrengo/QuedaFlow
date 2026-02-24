@@ -39,7 +39,11 @@ export interface ComputeSlotsParams {
   members: GroupMember[];
   availability_blocks: AvailabilityBlock[];
   blocked_windows: BlockedWindow[];
+  planning_start_date: string; // YYYY-MM-DD
+  planning_end_date: string; // YYYY-MM-DD
+  buffer_before_work_min?: number; // default 20
   slotSize?: number; // minutes, default 30
   yellow_threshold?: number; // default 0.75
+  min_meeting_duration_min?: number; // TODO: agrupar slots contiguos
 }
 

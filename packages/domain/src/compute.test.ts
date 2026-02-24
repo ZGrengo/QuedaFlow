@@ -13,7 +13,9 @@ describe('compute', () => {
       const result = computeSlots({
         members: [],
         availability_blocks: [],
-        blocked_windows: []
+        blocked_windows: [],
+        planning_start_date: '2024-01-01',
+        planning_end_date: '2024-01-07'
       });
       expect(result).toEqual([]);
     });
@@ -42,6 +44,8 @@ describe('compute', () => {
         members,
         availability_blocks: blocks,
         blocked_windows: [],
+        planning_start_date: '2024-01-01',
+        planning_end_date: '2024-01-01',
         slotSize: 60
       });
 
@@ -82,6 +86,8 @@ describe('compute', () => {
         members,
         availability_blocks: blocks,
         blocked_windows: blockedWindows,
+        planning_start_date: '2024-01-01',
+        planning_end_date: '2024-01-01',
         slotSize: 60
       });
 
@@ -106,6 +112,8 @@ describe('compute', () => {
         members,
         availability_blocks: blocks,
         blocked_windows: [],
+        planning_start_date: '2024-01-01',
+        planning_end_date: '2024-01-01',
         slotSize: 60
       });
 
@@ -139,6 +147,8 @@ describe('compute', () => {
         members,
         availability_blocks: blocks,
         blocked_windows: [],
+        planning_start_date: '2024-01-01',
+        planning_end_date: '2024-01-01',
         slotSize: 60
       });
 
@@ -166,13 +176,60 @@ describe('compute', () => {
         members,
         availability_blocks: blocks,
         blocked_windows: [],
+        planning_start_date: '2024-01-01',
+        planning_end_date: '2024-01-01',
         slotSize: 60
       });
 
-      // u2 has no blocks = available. u1 busy 9-17. So 8-9 both available
+      // u2 has no blocks = available. u1 busy 9-17 (+ buffer 20min = 8:40). So 7-8 both available
+      const slot7am = result.find(s => s.start_min === 420);
+      expect(slot7am?.available_members).toContain('u2');
+      expect(slot7am?.available_members).toContain('u1');
+    });
+
+    it('filters blocks outside planning range', () => {
+      const blocks: AvailabilityBlock[] = [
+        { date: '2024-01-01', start_min: 540, end_min: 1020, type: 'WORK', group_id: 'g1', user_id: 'u1' },
+        { date: '2024-01-05', start_min: 600, end_min: 720, type: 'PREFERRED', group_id: 'g1', user_id: 'u1' }
+      ];
+
+      const result = computeSlots({
+        members,
+        availability_blocks: blocks,
+        blocked_windows: [],
+        planning_start_date: '2024-01-01',
+        planning_end_date: '2024-01-03',
+        slotSize: 60
+      });
+
+      // 2024-01-01: u1 busy 9-17
+      // 2024-01-02, 03: u1 available (no blocks in range)
+      // 2024-01-05 block is outside range, so u1 has no blocks on 01-02 and 01-03
+      const jan2Slots = result.filter(s => s.date === '2024-01-02');
+      expect(jan2Slots.length).toBeGreaterThan(0);
+      expect(jan2Slots.every(s => s.available_members.includes('u1'))).toBe(true);
+    });
+
+    it('WORK buffer extends busy interval before start', () => {
+      const blocks: AvailabilityBlock[] = [
+        { date: '2024-01-01', start_min: 540, end_min: 1020, type: 'WORK', group_id: 'g1', user_id: 'u1' }
+      ];
+
+      const result = computeSlots({
+        members,
+        availability_blocks: blocks,
+        blocked_windows: [],
+        planning_start_date: '2024-01-01',
+        planning_end_date: '2024-01-01',
+        buffer_before_work_min: 30,
+        slotSize: 60
+      });
+
+      // With 30min buffer: busy from 8:30 (510) to 17:00. Slot 8:00-9:00 (480-540) should have u1 unavailable
       const slot8am = result.find(s => s.start_min === 480);
-      expect(slot8am?.available_members).toContain('u2');
-      expect(slot8am?.available_members).toContain('u1');
+      expect(slot8am?.available_members).not.toContain('u1');
+      const slot7am = result.find(s => s.start_min === 420);
+      expect(slot7am?.available_members).toContain('u1');
     });
   });
 

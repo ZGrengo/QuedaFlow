@@ -14,7 +14,7 @@ export class PlannerService {
   constructor(
     private groupService: GroupService,
     private blocksService: BlocksService
-  ) {}
+  ) { }
 
   computeGroupSlots(groupCode: string): Observable<ComputedSlot[]> {
     return this.groupService.getGroup(groupCode).pipe(
@@ -31,40 +31,43 @@ export class PlannerService {
       ]).pipe(
         map(([members, blocks, blockedWindows]) => ({ group, members, blocks, blockedWindows }))
       )
-    )).pipe(
-      map(({ group, members, blocks, blockedWindows }) => {
-        // Map to domain models
-        const domainMembers: DomainGroupMember[] = members.map(m => ({
-          id: m.id,
-          group_id: m.group_id,
-          user_id: m.user_id,
-          role: m.role
-        }));
+      )).pipe(
+        map(({ group, members, blocks, blockedWindows }) => {
+          // Map to domain models
+          const domainMembers: DomainGroupMember[] = members.map(m => ({
+            id: m.id,
+            group_id: m.group_id,
+            user_id: m.user_id,
+            role: m.role
+          }));
 
-        const domainBlocks: AvailabilityBlock[] = blocks.map(b => ({
-          id: b.id,
-          group_id: b.group_id,
-          user_id: b.user_id,
-          type: b.type,
-          date: b.date,
-          start_min: b.start_min,
-          end_min: b.end_min,
-          source: b.source,
-          created_at: b.created_at
-        }));
+          const domainBlocks: AvailabilityBlock[] = blocks.map(b => ({
+            id: b.id,
+            group_id: b.group_id,
+            user_id: b.user_id,
+            type: b.type,
+            date: b.date,
+            start_min: b.start_min,
+            end_min: b.end_min,
+            source: b.source,
+            created_at: b.created_at
+          }));
 
-        // Compute slots
-        const slots = computeSlots({
-          members: domainMembers,
-          availability_blocks: domainBlocks,
-          blocked_windows: blockedWindows,
-          slotSize: 30,
-          yellow_threshold: group.yellow_threshold
-        });
+          // Compute slots (solo dentro del rango planning)
+          const slots = computeSlots({
+            members: domainMembers,
+            availability_blocks: domainBlocks,
+            blocked_windows: blockedWindows,
+            planning_start_date: group.planning_start_date,
+            planning_end_date: group.planning_end_date,
+            buffer_before_work_min: group.buffer_before_work_min,
+            slotSize: 30,
+            yellow_threshold: group.yellow_threshold
+          });
 
-        return slots;
-      })
-    );
+          return slots;
+        })
+      );
   }
 
   getTopSlots(groupCode: string, topN: number = 10): Observable<ComputedSlot[]> {

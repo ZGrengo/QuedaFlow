@@ -27,6 +27,11 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
+    path: 'g/:code/settings',
+    loadComponent: () => import('./features/group/group-settings/group-settings.component').then(m => m.GroupSettingsComponent),
+    canActivate: [authGuard]
+  },
+  {
     path: 'g/:code/blocks',
     loadComponent: () => import('./features/blocks/blocks-manager/blocks-manager.component').then(m => m.BlocksManagerComponent),
     canActivate: [authGuard]
@@ -34,6 +39,11 @@ export const routes: Routes = [
   {
     path: 'g/:code/planner',
     loadComponent: () => import('./features/planner/planner-view/planner-view.component').then(m => m.PlannerViewComponent),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'g/:code/import',
+    loadComponent: () => import('./features/ocr/import-ocr.page').then(m => m.ImportOcrPageComponent),
     canActivate: [authGuard]
   },
   {
