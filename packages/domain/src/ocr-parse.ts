@@ -1,6 +1,17 @@
 /**
- * OCR Parser for Mapal-like schedule screenshots
- * Parses OCR text to extract work shifts with dates and time ranges
+ * OCR Parser for schedule screenshots (Mapal and other apps)
+ * Tolerant parser: handles split lines, various date/time formats, OCR errors.
+ *
+ * Formatos soportados:
+ * - dd/mm, dd-mm, dd.mm (con o sin año)
+ * - HH:MM - HH:MM, HH:MM–HH:MM, HH:MM a HH:MM
+ * - Fecha y horas en la misma línea o en líneas separadas
+ * - Rango partido: "13:00 -\n17:00"
+ * - "Día libre" para omitir turnos
+ *
+ * Limitaciones:
+ * - Requiere fecha en contexto cercano (máx ~5 líneas) para rangos horarios sueltos
+ * - El año se resuelve por planning_start/planning_end del grupo
  */
 
 export interface DetectedShift {
@@ -8,219 +19,320 @@ export interface DetectedShift {
   startMin: number; // minutes from midnight (0-1439)
   endMin: number; // minutes from midnight (0-1439)
   crossesMidnight: boolean;
-  confidence?: number; // 0-1, optional
+  confidence?: number;
 }
 
 export interface ParseIssue {
-  line: string; // Original line that caused the issue
-  reason: string; // Human-readable reason
+  line: string;
+  reason: string;
 }
 
-/**
- * Normalizes common OCR errors in time strings
- */
-function normalizeTimeString(text: string): string {
-  return text
-    // Replace common OCR mistakes: O→0, I/l→1
-    .replace(/[Oo]/g, '0')
-    .replace(/[Il|]/g, '1')
-    // Normalize various dash types to standard hyphen
-    .replace(/[–—−]/g, '-')
-    // Remove extra spaces
-    .replace(/\s+/g, ' ')
+export interface NormalizedLine {
+  index: number;
+  text: string;
+}
+
+/** Normalizes OCR text before parsing */
+export function normalizeOcrText(text: string): { normalized: string; lines: NormalizedLine[] } {
+  if (!text || !text.trim()) {
+    return { normalized: '', lines: [] };
+  }
+
+  let normalized = text
+    // Guiones largos → guion estándar
+    .replace(/[–—−—]/g, '-')
+    // " a " (con espacios) → " - "
+    .replace(/\s+a\s+/gi, ' - ')
+    // 13h00 → 13:00
+    .replace(/(\d{1,2})h(\d{2})/gi, '$1:$2')
+    // OCR: I/l→1 en contexto de horas (1I:00)
+    .replace(/([01]?\d)[Il|](?=:\d{2})/g, '$11')
+    // OCR: O→0 en contexto de horas (11:OO, 17:O0)
+    .replace(/(\d{1,2}):([Oo0])([Oo0])/g, (_, h, m1, m2) => `${h}:${m1 === 'O' || m1 === 'o' ? '0' : m1}${m2 === 'O' || m2 === 'o' ? '0' : m2}`)
+    .replace(/([Oo])([Oo0]):(\d{2})/g, (_, h1, h2, m) => `${h1 === 'O' || h1 === 'o' ? '0' : h1}${h2 === 'O' || h2 === 'o' ? '0' : h2}:${m}`)
+    // Colapsar espacios múltiples (mantener \n)
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n +/g, '\n')
+    .replace(/ +\n/g, '\n')
     .trim();
+
+  const rawLines = normalized.split('\n');
+  const lines: NormalizedLine[] = [];
+  rawLines.forEach((line, i) => {
+    const trimmed = line.trim();
+    if (trimmed.length > 0) {
+      lines.push({ index: i, text: trimmed });
+    }
+  });
+
+  return { normalized, lines };
 }
 
-/**
- * Extracts time range from text (e.g., "11:00 - 17:00" or "11:00-17:00 COC")
- * Returns [startHHMM, endHHMM] or null if not found
- */
-function extractTimeRange(text: string): [string, string] | null {
-  // Normalize first to handle OCR errors (O→0, I→1, etc.)
-  const normalized = normalizeTimeString(text);
-  
-  // Pattern: HH:MM - HH:MM or HH:MM-HH:MM (after normalization)
-  // Capture the full match to extract just the time range part
-  const timePattern = /(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/;
-  const match = normalized.match(timePattern);
-  if (!match) return null;
+// --- Token types ---
+type DateToken = { kind: 'date'; dd: number; mm: number; lineIndex: number };
+type TimeToken = { kind: 'time'; hh: number; min: number; lineIndex: number; position: number };
+type TimeRangeToken = { kind: 'range'; start: { hh: number; min: number }; end: { hh: number; min: number }; lineIndex: number };
+type PartialRangeToken = { kind: 'partial'; start: { hh: number; min: number }; lineIndex: number };
+type FreeDayToken = { kind: 'free'; lineIndex: number };
 
-  // Extract just the matched time range (ignore text before/after)
-  const timeRangeStr = match[0];
-  const parts = timeRangeStr.split(/\s*-\s*/);
-  if (parts.length !== 2) return null;
+type Token = DateToken | TimeToken | TimeRangeToken | PartialRangeToken | FreeDayToken;
 
-  const start = parts[0].trim();
-  const end = parts[1].trim();
+const DATE_RE = /(\b\d{1,2})[\/\.\-](\d{1,2})(?:[\/\.\-](\d{2,4}))?/g;
+const TIME_RE = /\b([01]?\d|2[0-3])[:\.h]([0-5]\d)\b/g;
+const RANGE_RE = /(\d{1,2})[:\.](\d{2})\s*-\s*(\d{1,2})[:\.](\d{2})/g;
+const PARTIAL_RANGE_RE = /(\d{1,2})[:\.](\d{2})\s*-\s*$/;
+const FREE_DAY_RE = /d[ií]a\s+libre|libre\b|sin\s+trabajo|no\s+trabajo|descanso/i;
 
-  // Validate format
-  if (!/^\d{1,2}:\d{2}$/.test(start) || !/^\d{1,2}:\d{2}$/.test(end)) {
-    return null;
+function tokenize(lines: NormalizedLine[]): Token[] {
+  const tokens: Token[] = [];
+
+  for (const { index, text } of lines) {
+    if (FREE_DAY_RE.test(text) && !RANGE_RE.test(text)) {
+      tokens.push({ kind: 'free', lineIndex: index });
+      continue;
+    }
+
+    // Date
+    const dateMatch = text.match(/(\b\d{1,2})[\/\.\-](\d{1,2})(?:[\/\.\-](\d{2,4}))?/);
+    if (dateMatch) {
+      const dd = parseInt(dateMatch[1], 10);
+      const mm = parseInt(dateMatch[2], 10);
+      if (dd >= 1 && dd <= 31 && mm >= 1 && mm <= 12) {
+        tokens.push({ kind: 'date', dd, mm, lineIndex: index });
+      }
+    }
+
+    // Full range on same line
+    const rangeMatch = text.match(/(\d{1,2})[:\.](\d{2})\s*-\s*(\d{1,2})[:\.](\d{2})/);
+    if (rangeMatch) {
+      tokens.push({
+        kind: 'range',
+        start: { hh: parseInt(rangeMatch[1], 10), min: parseInt(rangeMatch[2], 10) },
+        end: { hh: parseInt(rangeMatch[3], 10), min: parseInt(rangeMatch[4], 10) },
+        lineIndex: index
+      });
+      continue;
+    }
+
+    // Partial range: "13:00 -" at end of line
+    const partialMatch = text.match(/(\d{1,2})[:\.](\d{2})\s*-\s*$/);
+    if (partialMatch) {
+      tokens.push({
+        kind: 'partial',
+        start: { hh: parseInt(partialMatch[1], 10), min: parseInt(partialMatch[2], 10) },
+        lineIndex: index
+      });
+      continue;
+    }
+
+    // Single times (for joining across lines)
+    let m: RegExpExecArray | null;
+    const timeRe = /\b([01]?\d|2[0-3])[:\.h]([0-5]\d)\b/g;
+    while ((m = timeRe.exec(text)) !== null) {
+      tokens.push({
+        kind: 'time',
+        hh: parseInt(m[1], 10),
+        min: parseInt(m[2], 10),
+        lineIndex: index,
+        position: m.index
+      });
+    }
   }
 
-  return [start, end];
+  return tokens;
 }
 
-/**
- * Converts HH:MM to minutes from midnight, handling values > 23:59
- * Special case: "00:00" as end time means end of day (1440)
- */
-function hhmmToMinSafe(hhmm: string, isEndTime: boolean = false): number | null {
-  const [hoursStr, minutesStr] = hhmm.split(':');
-  const hours = parseInt(hoursStr, 10);
-  const minutes = parseInt(minutesStr, 10);
-
-  if (isNaN(hours) || isNaN(minutes) || minutes < 0 || minutes > 59) {
-    return null;
-  }
-
-  // Special case: 00:00 as end time means end of day (1440)
-  if (isEndTime && hours === 0 && minutes === 0) {
-    return 1440;
-  }
-
-  // Allow hours > 23 for midnight crossing (e.g., 24:00 = next day 00:00)
-  if (hours < 0 || hours > 24) {
-    return null;
-  }
-
-  // If hours is 24, convert to 0 (next day)
-  const normalizedHours = hours === 24 ? 0 : hours;
-  return normalizedHours * 60 + minutes;
+function timeToMin(hh: number, min: number): number {
+  if (hh < 0 || hh > 24 || min < 0 || min > 59) return -1;
+  if (hh === 24) return 1440;
+  return hh * 60 + min;
 }
 
-/**
- * Extracts date in dd/mm format from text
- * Returns [day, month] or null
- */
-function extractDate(text: string): [number, number] | null {
-  // Pattern: dd/mm (with optional year)
-  const datePattern = /(\d{1,2})\/(\d{1,2})(?:\/\d{4})?/;
-  const match = text.match(datePattern);
-  if (!match) return null;
-
-  const day = parseInt(match[1], 10);
-  const month = parseInt(match[2], 10);
-
-  if (day < 1 || day > 31 || month < 1 || month > 12) {
-    return null;
-  }
-
-  return [day, month];
-}
-
-/**
- * Resolves year for a date given planning range
- * Returns YYYY-MM-DD or null if date doesn't fit in range
- */
 function resolveDateWithYear(
   day: number,
   month: number,
   planningStartISO: string,
   planningEndISO: string
 ): string | null {
-  // Parse planning dates as local dates (YYYY-MM-DD format)
   const [startYear, startMonth, startDay] = planningStartISO.split('-').map(Number);
   const [endYear, endMonth, endDay] = planningEndISO.split('-').map(Number);
   const planningStart = new Date(startYear, startMonth - 1, startDay);
   const planningEnd = new Date(endYear, endMonth - 1, endDay);
 
-  // Try years in the planning range (start year, end year, and years in between)
   const yearsToTry = new Set<number>();
-  for (let y = startYear; y <= endYear; y++) {
-    yearsToTry.add(y);
-  }
-  // Also try adjacent years in case the range is near year boundary
+  for (let y = startYear; y <= endYear; y++) yearsToTry.add(y);
   yearsToTry.add(startYear - 1);
   yearsToTry.add(endYear + 1);
 
-  // Try each year
-  for (const year of Array.from(yearsToTry).sort()) {
+  for (const year of Array.from(yearsToTry).sort((a, b) => a - b)) {
     const candidate = new Date(year, month - 1, day);
-    // Check if date is valid (handles leap years, invalid dates like 31/02)
     if (candidate.getDate() === day && candidate.getMonth() === month - 1) {
-      // Compare dates (ignore time)
-      const candidateDateOnly = new Date(year, month - 1, day);
-      if (candidateDateOnly >= planningStart && candidateDateOnly <= planningEnd) {
-        // Format as YYYY-MM-DD manually to avoid timezone issues
-        const yyyy = candidate.getFullYear();
-        const mm = String(candidate.getMonth() + 1).padStart(2, '0');
-        const dd = String(candidate.getDate()).padStart(2, '0');
+      const d = new Date(year, month - 1, day);
+      if (d >= planningStart && d <= planningEnd) {
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
         return `${yyyy}-${mm}-${dd}`;
       }
     }
   }
-
   return null;
 }
 
-/**
- * Checks if text indicates a free day (no work)
- */
-function isFreeDay(text: string): boolean {
-  const normalized = text.toLowerCase().trim();
-  const freeDayPatterns = [
-    /d[ií]a\s+libre/i,
-    /libre/i,
-    /sin\s+trabajo/i,
-    /no\s+trabajo/i,
-    /descanso/i
-  ];
-  return freeDayPatterns.some(pattern => pattern.test(normalized));
+function buildShiftsFromTokens(
+  tokens: Token[],
+  lines: NormalizedLine[],
+  planningStartISO: string,
+  planningEndISO: string
+): { shifts: DetectedShift[]; issues: ParseIssue[] } {
+  const shifts: DetectedShift[] = [];
+  const issues: ParseIssue[] = [];
+  const MAX_LINES_BACK = 5;
+
+  let currentDate: string | null = null;
+  let lastDateLineIndex = -1;
+  const lineMap = new Map<number, string>();
+  lines.forEach(l => lineMap.set(l.index, l.text));
+
+  let i = 0;
+  while (i < tokens.length) {
+    const t = tokens[i];
+
+    if (t.kind === 'free') {
+      currentDate = null;
+      i++;
+      continue;
+    }
+
+    if (t.kind === 'date') {
+      const resolved = resolveDateWithYear(t.dd, t.mm, planningStartISO, planningEndISO);
+      if (resolved) {
+        currentDate = resolved;
+        lastDateLineIndex = t.lineIndex;
+      } else {
+        const lineText = lineMap.get(t.lineIndex) ?? '';
+        issues.push({
+          line: lineText,
+          reason: `Fecha ${t.dd}/${t.mm} fuera del rango de planificación (${planningStartISO} - ${planningEndISO})`
+        });
+        currentDate = null;
+      }
+      i++;
+      continue;
+    }
+
+    if (t.kind === 'range') {
+      const startMin = timeToMin(t.start.hh, t.start.min);
+      let endMin = timeToMin(t.end.hh, t.end.min);
+      if (t.end.hh === 0 && t.end.min === 0) endMin = 1440;
+
+      if (startMin < 0 || endMin < 0) {
+        issues.push({ line: lineMap.get(t.lineIndex) ?? '', reason: 'Formato de hora inválido' });
+        i++;
+        continue;
+      }
+
+      if (!currentDate) {
+        issues.push({
+          line: lineMap.get(t.lineIndex) ?? '',
+          reason: 'Rango de horas sin fecha asociada en contexto cercano'
+        });
+        i++;
+        continue;
+      }
+
+      const crossesMidnight = endMin < startMin || endMin >= 1440;
+      const normalizedEnd = endMin > 1440 ? endMin % 1440 : endMin;
+      if (startMin >= 1440 || normalizedEnd < 0 || normalizedEnd > 1440) {
+        issues.push({ line: lineMap.get(t.lineIndex) ?? '', reason: 'Rango de horas inválido' });
+        i++;
+        continue;
+      }
+
+      shifts.push({
+        dateISO: currentDate,
+        startMin,
+        endMin: normalizedEnd,
+        crossesMidnight
+      });
+      i++;
+      continue;
+    }
+
+    if (t.kind === 'partial') {
+      const startMin = timeToMin(t.start.hh, t.start.min);
+      if (startMin < 0) {
+        i++;
+        continue;
+      }
+
+      if (!currentDate) {
+        issues.push({
+          line: lineMap.get(t.lineIndex) ?? '',
+          reason: 'Rango horario incompleto sin fecha en contexto'
+        });
+        i++;
+        continue;
+      }
+
+      const nextToken = tokens[i + 1];
+      if (nextToken?.kind === 'time') {
+        const endMin = timeToMin(nextToken.hh, nextToken.min);
+        if (endMin >= 0 && nextToken.lineIndex - t.lineIndex <= 2) {
+          const crossesMidnight = endMin < startMin || endMin >= 1440;
+          const normalizedEnd = endMin > 1440 ? endMin % 1440 : endMin;
+          shifts.push({
+            dateISO: currentDate,
+            startMin,
+            endMin: normalizedEnd,
+            crossesMidnight
+          });
+          i += 2;
+          continue;
+        }
+      }
+      issues.push({
+        line: lineMap.get(t.lineIndex) ?? '',
+        reason: 'Rango horario incompleto (falta hora fin en línea siguiente)'
+      });
+      i++;
+      continue;
+    }
+
+    if (t.kind === 'time') {
+      const nextToken = tokens[i + 1];
+      if (nextToken?.kind === 'time' && nextToken.lineIndex - t.lineIndex <= 2) {
+        const startMin = timeToMin(t.hh, t.min);
+        const endMin = timeToMin(nextToken.hh, nextToken.min);
+        if (startMin >= 0 && endMin >= 0) {
+          if (!currentDate) {
+            issues.push({
+              line: lineMap.get(t.lineIndex) ?? '',
+              reason: 'Rango de horas sin fecha asociada'
+            });
+          } else {
+            const crossesMidnight = endMin < startMin || endMin >= 1440;
+            const normalizedEnd = endMin > 1440 ? endMin % 1440 : endMin;
+            shifts.push({
+              dateISO: currentDate,
+              startMin,
+              endMin: normalizedEnd,
+              crossesMidnight
+            });
+          }
+          i += 2;
+          continue;
+        }
+      }
+      i++;
+    }
+  }
+
+  return { shifts, issues };
 }
 
 /**
- * Parses a time range and pushes one shift to shifts (or an issue to issues).
- * @returns true if a shift was pushed, false if an issue was pushed
- */
-function pushShiftFromTimeRange(
-  shifts: DetectedShift[],
-  issues: ParseIssue[],
-  line: string,
-  timeRange: [string, string],
-  dateISO: string
-): boolean {
-  const [startHHMM, endHHMM] = timeRange;
-  const startMin = hhmmToMinSafe(startHHMM, false);
-  const endMin = hhmmToMinSafe(endHHMM, true);
-
-  if (startMin === null || endMin === null) {
-    issues.push({
-      line,
-      reason: `Formato de hora inválido: ${startHHMM} - ${endHHMM}`
-    });
-    return false;
-  }
-
-  const crossesMidnight = endMin < startMin || endMin >= 1440;
-  let normalizedEndMin = endMin;
-  if (endMin > 1440) {
-    normalizedEndMin = endMin % 1440;
-  }
-
-  if (startMin < 0 || startMin >= 1440 || normalizedEndMin < 0 || normalizedEndMin > 1440) {
-    issues.push({
-      line,
-      reason: `Rango de horas fuera de rango válido: ${startHHMM} - ${endHHMM}`
-    });
-    return false;
-  }
-
-  shifts.push({
-    dateISO,
-    startMin,
-    endMin: normalizedEndMin,
-    crossesMidnight
-  });
-  return true;
-}
-
-/**
- * Parses Mapal-like OCR text to extract work shifts
- * @param text - Raw OCR text
- * @param planningStartISO - Planning start date (YYYY-MM-DD)
- * @param planningEndISO - Planning end date (YYYY-MM-DD)
- * @returns Object with shifts array and issues array
+ * Parses OCR text to extract work shifts (tolerant to various formats)
  */
 export function parseMapalOcrText(
   text: string,
@@ -235,66 +347,14 @@ export function parseMapalOcrText(
     return { shifts, issues };
   }
 
-  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-  let currentDate: string | null = null;
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-
-    // Check for free day (only if line doesn't look like "dd/mm HH:mm - HH:mm")
-    if (isFreeDay(line) && !extractTimeRange(line)) {
-      currentDate = null;
-      continue;
-    }
-
-    const dateMatch = extractDate(line);
-    const timeRange = extractTimeRange(line);
-
-    // Same-line format: "26/02 17:00 - 20:00 e COC" → date and time on one line
-    if (dateMatch && timeRange) {
-      const [day, month] = dateMatch;
-      const resolvedDate = resolveDateWithYear(day, month, planningStartISO, planningEndISO);
-      if (!resolvedDate) {
-        issues.push({
-          line,
-          reason: `Fecha ${day}/${month} fuera del rango de planificación (${planningStartISO} - ${planningEndISO})`
-        });
-        continue;
-      }
-      currentDate = resolvedDate;
-      pushShiftFromTimeRange(shifts, issues, line, timeRange, resolvedDate);
-      continue;
-    }
-
-    // Date only (e.g. "25/02" or "26/02" on its own)
-    if (dateMatch && !timeRange) {
-      const [day, month] = dateMatch;
-      const resolvedDate = resolveDateWithYear(day, month, planningStartISO, planningEndISO);
-      if (resolvedDate) {
-        currentDate = resolvedDate;
-      } else {
-        issues.push({
-          line,
-          reason: `Fecha ${day}/${month} fuera del rango de planificación (${planningStartISO} - ${planningEndISO})`
-        });
-        currentDate = null;
-      }
-      continue;
-    }
-
-    // Time range only (use current date from previous line)
-    if (timeRange) {
-      if (!currentDate) {
-        issues.push({
-          line,
-          reason: 'Rango de horas encontrado sin fecha asociada'
-        });
-        continue;
-      }
-      pushShiftFromTimeRange(shifts, issues, line, timeRange, currentDate);
-    }
+  const { lines } = normalizeOcrText(text);
+  if (lines.length === 0) {
+    issues.push({ line: '', reason: 'Texto OCR vacío tras normalización' });
+    return { shifts, issues };
   }
 
-  return { shifts, issues };
-}
+  const tokens = tokenize(lines);
+  const result = buildShiftsFromTokens(tokens, lines, planningStartISO, planningEndISO);
 
+  return result;
+}

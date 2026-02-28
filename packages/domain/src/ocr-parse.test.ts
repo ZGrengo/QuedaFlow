@@ -237,6 +237,73 @@ MIÉRCOLES 17/01
     });
   });
 
+  describe('tolerant parsing (split lines, various formats)', () => {
+    const marPlanningStart = '2026-03-01';
+    const marPlanningEnd = '2026-03-31';
+
+    it('1) Mapal line completa: dd/mm HH:mm - HH:mm', () => {
+      const text = 'MI 04/02 CRURS 11:00 - 17:00 COC';
+      const result = parseMapalOcrText(text, '2026-02-01', '2026-02-28');
+      expect(result.shifts).toHaveLength(1);
+      expect(result.shifts[0].dateISO).toBe('2026-02-04');
+      expect(result.shifts[0].startMin).toBe(660);
+      expect(result.shifts[0].endMin).toBe(1020);
+    });
+
+    it('2) Fecha en una línea + horas debajo', () => {
+      const text = '10/03\n13:00 - 17:00\nCOC';
+      const result = parseMapalOcrText(text, marPlanningStart, marPlanningEnd);
+      expect(result.shifts).toHaveLength(1);
+      expect(result.shifts[0].dateISO).toBe('2026-03-10');
+      expect(result.shifts[0].startMin).toBe(780);
+      expect(result.shifts[0].endMin).toBe(1020);
+    });
+
+    it('3) Rango partido: start en una línea, end en la siguiente', () => {
+      const text = '10/03 13:00 -\n17:00 COC';
+      const result = parseMapalOcrText(text, marPlanningStart, marPlanningEnd);
+      expect(result.shifts).toHaveLength(1);
+      expect(result.shifts[0].dateISO).toBe('2026-03-10');
+      expect(result.shifts[0].startMin).toBe(780);
+      expect(result.shifts[0].endMin).toBe(1020);
+    });
+
+    it('4) Guion largo y puntos en fecha', () => {
+      const text = '10.03 13:00–17:00';
+      const result = parseMapalOcrText(text, marPlanningStart, marPlanningEnd);
+      expect(result.shifts).toHaveLength(1);
+      expect(result.shifts[0].dateISO).toBe('2026-03-10');
+      expect(result.shifts[0].startMin).toBe(780);
+      expect(result.shifts[0].endMin).toBe(1020);
+    });
+
+    it('5) Con "a" entre horas', () => {
+      const text = '10/03 13:00 a 17:00';
+      const result = parseMapalOcrText(text, marPlanningStart, marPlanningEnd);
+      expect(result.shifts).toHaveLength(1);
+      expect(result.shifts[0].dateISO).toBe('2026-03-10');
+      expect(result.shifts[0].startMin).toBe(780);
+      expect(result.shifts[0].endMin).toBe(1020);
+    });
+
+    it('6) Sin fecha en esa línea pero con fecha previa', () => {
+      const text = '10/03\nCOC\n13:00 - 17:00';
+      const result = parseMapalOcrText(text, marPlanningStart, marPlanningEnd);
+      expect(result.shifts).toHaveLength(1);
+      expect(result.shifts[0].dateISO).toBe('2026-03-10');
+      expect(result.shifts[0].startMin).toBe(780);
+      expect(result.shifts[0].endMin).toBe(1020);
+    });
+
+    it('7) Fuera de rango: marca issue out_of_range', () => {
+      const text = '10/03 13:00-17:00';
+      const result = parseMapalOcrText(text, '2026-03-01', '2026-03-07');
+      expect(result.shifts).toHaveLength(0);
+      expect(result.issues.length).toBeGreaterThan(0);
+      expect(result.issues.some(i => i.reason.includes('fuera del rango'))).toBe(true);
+    });
+  });
+
   describe('year resolution', () => {
     it('resolves year for dates in current year', () => {
       const text = `15/01

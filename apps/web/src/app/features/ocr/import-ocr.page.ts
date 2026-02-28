@@ -6,7 +6,6 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatExpansionModule } from '@angular/material/expansion';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { NotificationService } from '../../core/services/notification.service';
 import { MatTableModule } from '@angular/material/table';
@@ -15,9 +14,10 @@ import { BlocksService } from '../../core/services/blocks.service';
 import { ImportOcrService } from './import-ocr.service';
 import { ShiftEditorComponent } from './components/shift-editor.component';
 import { DetectedShift, ParseIssue } from '@domain/index';
+import { formatDateDDMMYYYY } from '../../core/utils/date-format';
 import { minToHhmm } from '@domain/index';
 
-type Step = 'upload' | 'results' | 'saving' | 'summary';
+type Step = 'upload' | 'results' | 'saving';
 
 @Component({
   selector: 'app-import-ocr',
@@ -30,7 +30,6 @@ type Step = 'upload' | 'results' | 'saving' | 'summary';
     MatButtonModule,
     MatIconModule,
     MatProgressBarModule,
-    MatExpansionModule,
     MatSnackBarModule,
     MatTableModule,
     ShiftEditorComponent
@@ -64,7 +63,7 @@ type Step = 'upload' | 'results' | 'saving' | 'summary';
               <label for="file-input">
                 <button mat-raised-button class="qf-btn-primary" type="button" (click)="fileInput.click()">
                   <mat-icon>upload</mat-icon>
-                  Seleccionar imagen{{ selectedFiles.length > 0 ? 's (más)' : '' }}
+                  Seleccionar imagen{{ selectedFiles.length > 0 ? 'es' : '' }}
                 </button>
               </label>
               <div *ngIf="selectedFiles.length > 0" class="file-info">
@@ -104,32 +103,11 @@ type Step = 'upload' | 'results' | 'saving' | 'summary';
               </button>
             </div>
 
-            <!-- Parse Issues Panel -->
-            <mat-expansion-panel *ngIf="parseIssues.length > 0" class="issues-panel">
-              <mat-expansion-panel-header>
-                <mat-panel-title>
-                  <mat-icon>warning</mat-icon>
-                  Problemas detectados ({{ parseIssues.length }})
-                </mat-panel-title>
-              </mat-expansion-panel-header>
-              <div class="issues-list">
-                <div *ngFor="let issue of parseIssues" class="issue-item">
-                  <strong>Línea:</strong> {{ issue.line }}<br>
-                  <strong>Razón:</strong> {{ issue.reason }}
-                </div>
-              </div>
-            </mat-expansion-panel>
-
-            <!-- OCR Raw Text (Debug) -->
-            <mat-expansion-panel class="debug-panel">
-              <mat-expansion-panel-header>
-                <mat-panel-title>
-                  <mat-icon>code</mat-icon>
-                  Texto OCR (debug)
-                </mat-panel-title>
-              </mat-expansion-panel-header>
-              <pre class="ocr-text">{{ ocrRawText }}</pre>
-            </mat-expansion-panel>
+            <!-- Aviso de turnos omitidos -->
+            <div *ngIf="parseIssues.length > 0 && group" class="omitted-notice">
+              <mat-icon>info</mat-icon>
+              <span>Algunos turnos fueron omitidos por exceder la fecha de planificación planteada por el host ({{ formatDateDDMMYYYY(group.planning_start_date) }} - {{ formatDateDDMMYYYY(group.planning_end_date) }})</span>
+            </div>
 
             <!-- Shifts List -->
             <div class="shifts-list">
@@ -158,40 +136,6 @@ type Step = 'upload' | 'results' | 'saving' | 'summary';
           <div *ngIf="currentStep === 'saving'">
             <p>Guardando turnos...</p>
             <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-          </div>
-
-          <!-- Step 4: Summary -->
-          <div *ngIf="currentStep === 'summary'">
-            <h3>Resumen de Importación</h3>
-            <div class="summary-stats">
-              <div class="stat success">
-                <mat-icon>check_circle</mat-icon>
-                <span>Guardados: {{ savedCount }}</span>
-              </div>
-              <div class="stat error" *ngIf="failedCount > 0">
-                <mat-icon>error</mat-icon>
-                <span>Fallidos: {{ failedCount }}</span>
-              </div>
-            </div>
-            <div *ngIf="saveResults.length > 0" class="save-results">
-              <h4>Detalles:</h4>
-              <div *ngFor="let result of saveResults; let i = index" class="result-item" [class.error]="!result.ok">
-                <span>Turno {{ i + 1 }}:</span>
-                <span *ngIf="result.ok">✓ Guardado ({{ result.ids.length }} bloque{{ result.ids.length > 1 ? 's' : '' }})</span>
-                <span *ngIf="!result.ok">✗ Error: {{ result.error }}</span>
-              </div>
-            </div>
-            <div class="actions">
-              <button mat-raised-button class="qf-btn-primary" [routerLink]="['/g', code, 'blocks']">
-                Ver bloques
-              </button>
-              <button mat-raised-button [routerLink]="['/g', code, 'planner']">
-                Ver planner
-              </button>
-              <button mat-button (click)="reset()">
-                Importar otro
-              </button>
-            </div>
           </div>
         </mat-card-content>
       </mat-card>
@@ -266,71 +210,28 @@ type Step = 'upload' | 'results' | 'saving' | 'summary';
       margin-bottom: 16px;
     }
 
-    .issues-panel {
+    .omitted-notice {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 16px;
       margin-bottom: 16px;
-    }
-
-    .issues-list {
-      padding: 8px 0;
-    }
-
-    .issue-item {
-      padding: 8px 0;
-      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-      font-size: 0.875rem;
-    }
-
-    .debug-panel {
-      margin-bottom: 16px;
-    }
-
-    .ocr-text {
       background: var(--qf-surface-2);
-      padding: 12px;
-      border-radius: 4px;
-      font-size: 0.875rem;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-      max-height: 300px;
-      overflow-y: auto;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      font-size: 0.9rem;
+      color: var(--qf-text, inherit);
+    }
+
+    .omitted-notice mat-icon {
+      flex-shrink: 0;
+      color: var(--qf-primary);
     }
 
     .shifts-list {
       margin-bottom: 16px;
     }
 
-    .summary-stats {
-      display: flex;
-      gap: 24px;
-      margin: 16px 0;
-    }
-
-    .stat {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .stat.success {
-      color: #1a5c4a;
-    }
-
-    .stat.error {
-      color: var(--qf-primary);
-    }
-
-    .save-results {
-      margin-top: 16px;
-    }
-
-    .result-item {
-      padding: 8px 0;
-      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-    }
-
-    .result-item.error {
-      color: var(--qf-primary);
-    }
   `]
 })
 export class ImportOcrPageComponent implements OnInit, OnDestroy {
@@ -343,15 +244,12 @@ export class ImportOcrPageComponent implements OnInit, OnDestroy {
   processingOcr = false;
   ocrProgress = 0;
   ocrProgressStatus = '';
-  ocrRawText = '';
   detectedShifts: DetectedShift[] = [];
   parseIssues: ParseIssue[] = [];
   saving = false;
-  saveResults: Array<{ ok: true; ids: string[] } | { ok: false; error: string }> = [];
-  savedCount = 0;
-  failedCount = 0;
   minDate = new Date();
   maxDate = new Date();
+  formatDateDDMMYYYY = formatDateDDMMYYYY;
 
   uploadForm: FormGroup;
   private ocrCancelToken: { cancel: () => void } | null = null;
@@ -397,7 +295,15 @@ export class ImportOcrPageComponent implements OnInit, OnDestroy {
   onFileChange(event: Event) {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
-      this.selectedFiles = Array.from(input.files);
+      const newFiles = Array.from(input.files);
+      const combined = [...this.selectedFiles, ...newFiles];
+      const seen = new Set<string>();
+      this.selectedFiles = combined.filter(f => {
+        const key = `${f.name}-${f.size}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
       this.imagePreviews = new Array(Math.min(this.selectedFiles.length, this.maxPreviews));
       const toLoad = this.imagePreviews.length;
       for (let i = 0; i < toLoad; i++) {
@@ -405,6 +311,7 @@ export class ImportOcrPageComponent implements OnInit, OnDestroy {
           this.imagePreviews[i] = dataUrl;
         });
       }
+      input.value = '';
     }
   }
 
@@ -471,13 +378,12 @@ export class ImportOcrPageComponent implements OnInit, OnDestroy {
         });
       }
 
-      this.ocrRawText = allRawText;
       this.detectedShifts = this.sortShiftsByDateAndTime(allShifts);
       this.parseIssues = allIssues;
       this.currentStep = 'results';
 
       if (this.detectedShifts.length === 0) {
-        this.notification.error('No se detectaron turnos. Revisa el texto OCR en el panel de debug.', 'Cerrar', 5000);
+        this.notification.error('No se detectaron turnos. Revisa que las imágenes contengan texto legible con turnos.', 'Cerrar', 5000);
       } else if (totalFiles > 1) {
         this.notification.info(`${this.detectedShifts.length} turnos detectados en ${totalFiles} imagen(es)`);
       }
@@ -507,7 +413,6 @@ export class ImportOcrPageComponent implements OnInit, OnDestroy {
     this.currentStep = 'upload';
     this.detectedShifts = [];
     this.parseIssues = [];
-    this.ocrRawText = '';
   }
 
   onShiftChange(index: number, updatedShift: DetectedShift) {
@@ -551,16 +456,15 @@ export class ImportOcrPageComponent implements OnInit, OnDestroy {
       this.group.planning_end_date
     ).subscribe({
       next: (results: Array<{ ok: true; ids: string[] } | { ok: false; error: string }>) => {
-        this.saveResults = results;
-        this.savedCount = results.filter((r): r is { ok: true; ids: string[] } => r.ok).length;
-        this.failedCount = results.filter((r): r is { ok: false; error: string } => !r.ok).length;
-        this.currentStep = 'summary';
+        const savedCount = results.filter((r): r is { ok: true; ids: string[] } => r.ok).length;
+        const failedCount = results.filter((r): r is { ok: false; error: string } => !r.ok).length;
 
-        if (this.savedCount > 0) {
-          this.notification.success(`${this.savedCount} turno(s) guardado(s) correctamente`);
-        }
-        if (this.failedCount > 0) {
-          this.notification.error(`${this.failedCount} turno(s) fallaron al guardar`, 'Cerrar', 5000);
+        if (savedCount > 0) {
+          this.notification.success('Turnos guardados correctamente');
+          this.router.navigate(['/g', this.code, 'blocks']);
+        } else if (failedCount > 0) {
+          this.notification.error(`${failedCount} turno(s) fallaron al guardar`, 'Cerrar', 5000);
+          this.currentStep = 'results';
         }
       },
       error: (err: unknown) => {
@@ -579,12 +483,8 @@ export class ImportOcrPageComponent implements OnInit, OnDestroy {
     this.currentStep = 'upload';
     this.selectedFiles = [];
     this.imagePreviews = [];
-    this.ocrRawText = '';
     this.detectedShifts = [];
     this.parseIssues = [];
-    this.saveResults = [];
-    this.savedCount = 0;
-    this.failedCount = 0;
     this.uploadForm.reset();
   }
 }

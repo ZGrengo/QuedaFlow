@@ -46,7 +46,7 @@ export interface ConfirmDialogData {
     }
 
     mat-dialog-actions {
-      padding: 16px 0 0;
+      padding: 20px 24px 24px 24px;
       margin: 0;
       min-height: auto;
     }
