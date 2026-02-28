@@ -7,7 +7,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatExpansionModule } from '@angular/material/expansion';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
+import { NotificationService } from '../../core/services/notification.service';
 import { MatTableModule } from '@angular/material/table';
 import { GroupService, Group } from '../../core/services/group.service';
 import { BlocksService } from '../../core/services/blocks.service';
@@ -363,7 +364,7 @@ export class ImportOcrPageComponent implements OnInit, OnDestroy {
     private groupService: GroupService,
     private blocksService: BlocksService,
     private ocrService: ImportOcrService,
-    private snackBar: MatSnackBar
+    private notification: NotificationService
   ) {
     this.uploadForm = this.fb.group({
       file: [null, Validators.required]
@@ -387,7 +388,7 @@ export class ImportOcrPageComponent implements OnInit, OnDestroy {
         this.maxDate = new Date(group.planning_end_date);
       },
       error: (err: unknown) => {
-        this.snackBar.open('Error al cargar el grupo', 'Cerrar', { duration: 3000 });
+        this.notification.error('Error al cargar el grupo');
         console.error(err);
       }
     });
@@ -476,12 +477,12 @@ export class ImportOcrPageComponent implements OnInit, OnDestroy {
       this.currentStep = 'results';
 
       if (this.detectedShifts.length === 0) {
-        this.snackBar.open('No se detectaron turnos. Revisa el texto OCR en el panel de debug.', 'Cerrar', { duration: 5000 });
+        this.notification.error('No se detectaron turnos. Revisa el texto OCR en el panel de debug.', 'Cerrar', 5000);
       } else if (totalFiles > 1) {
-        this.snackBar.open(`${this.detectedShifts.length} turnos detectados en ${totalFiles} imagen(es)`, 'Cerrar', { duration: 3000 });
+        this.notification.info(`${this.detectedShifts.length} turnos detectados en ${totalFiles} imagen(es)`);
       }
     } catch (error: any) {
-      this.snackBar.open('Error al procesar OCR: ' + (error.message || 'Error desconocido'), 'Cerrar', { duration: 5000 });
+      this.notification.error('Error al procesar OCR: ' + (error.message || 'Error desconocido'), 'Cerrar', 5000);
       console.error('OCR error:', error);
     } finally {
       this.processingOcr = false;
@@ -547,15 +548,15 @@ export class ImportOcrPageComponent implements OnInit, OnDestroy {
         this.currentStep = 'summary';
 
         if (this.savedCount > 0) {
-          this.snackBar.open(`${this.savedCount} turno(s) guardado(s) correctamente`, 'Cerrar', { duration: 3000 });
+          this.notification.success(`${this.savedCount} turno(s) guardado(s) correctamente`);
         }
         if (this.failedCount > 0) {
-          this.snackBar.open(`${this.failedCount} turno(s) fallaron al guardar`, 'Cerrar', { duration: 5000 });
+          this.notification.error(`${this.failedCount} turno(s) fallaron al guardar`, 'Cerrar', 5000);
         }
       },
       error: (err: unknown) => {
         const message = err instanceof Error ? err.message : 'Error desconocido';
-        this.snackBar.open('Error al guardar turnos: ' + message, 'Cerrar', { duration: 5000 });
+        this.notification.error('Error al guardar turnos: ' + message, 'Cerrar', 5000);
         console.error('Save error:', err);
         this.currentStep = 'results';
       },

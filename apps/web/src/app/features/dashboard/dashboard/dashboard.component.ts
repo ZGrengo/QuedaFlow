@@ -9,8 +9,11 @@ import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { AuthService } from '../../../core/services/auth.service';
+import { NotificationService } from '../../../core/services/notification.service';
+import { ConfirmDialogComponent, ConfirmDialogData } from '../../../core/components/confirm-dialog/confirm-dialog.component';
 import { GroupService, Group } from '../../../core/services/group.service';
 
 @Component({
@@ -27,12 +30,13 @@ import { GroupService, Group } from '../../../core/services/group.service';
     MatIconModule,
     MatToolbarModule,
     MatTooltipModule,
+    MatDialogModule,
     MatSnackBarModule
   ],
   template: `
-    <div class="dashboard qf-page">
-      <mat-toolbar class="qf-toolbar toolbar">
-        <span class="title">QuedaFlow</span>
+    <div class="dashboard">
+      <mat-toolbar class="qf-toolbar qf-toolbar--full qf-toolbar--light toolbar">
+        <a routerLink="/" class="title title-link">QuedaFlow</a>
         <span class="spacer"></span>
         <span class="user-email">{{ userEmail }}</span>
         <button mat-icon-button (click)="signOut()" matTooltip="Cerrar sesión">
@@ -143,10 +147,39 @@ import { GroupService, Group } from '../../../core/services/group.service';
       position: sticky;
       top: 0;
       z-index: 10;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .qf-toolbar--full {
+      margin: 0;
+      padding-left: clamp(16px, 4vw, 32px);
+      padding-right: clamp(16px, 4vw, 32px);
+    }
+
+    .qf-toolbar--light.mat-mdc-toolbar {
+      background: var(--qf-surface) !important;
+      color: #1a1a1e;
+    }
+
+    .qf-toolbar--light .title-link,
+    .qf-toolbar--light .user-email,
+    .qf-toolbar--light .mat-icon {
+      color: inherit;
     }
 
     .title {
       font-size: 1.25rem;
+    }
+
+    .title-link {
+      color: inherit;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .title-link:hover {
+      text-decoration: underline;
     }
 
     .spacer {
@@ -415,7 +448,8 @@ export class DashboardComponent {
     private groupService: GroupService,
     private router: Router,
     private fb: FormBuilder,
-    private snackBar: MatSnackBar
+    private notification: NotificationService,
+    private dialog: MatDialog
   ) {
     this.joinForm = this.fb.group({
       code: ['', [Validators.required, Validators.minLength(6), Validators.maxLength(6)]]
@@ -485,36 +519,52 @@ export class DashboardComponent {
   leaveGroup(group: Group, event: Event): void {
     event.preventDefault();
     event.stopPropagation();
-    if (!confirm(`¿Dejar el grupo "${group.name}"? Ya no verás este grupo en tu lista.`)) return;
-    this.actionGroupId = group.id;
-    this.groupService.leaveGroup(group.id).subscribe({
-      next: () => {
-        this.myGroups = this.myGroups.filter(g => g.id !== group.id);
-        this.actionGroupId = null;
-        this.snackBar.open(`Has dejado el grupo ${group.name}`, undefined, { duration: 3000 });
-      },
-      error: (err: { message?: string }) => {
-        this.actionGroupId = null;
-        this.snackBar.open(err?.message ?? 'Error al dejar el grupo', 'Cerrar', { duration: 4000 });
-      }
+    const data: ConfirmDialogData = {
+      title: 'Dejar grupo',
+      message: `¿Dejar el grupo "${group.name}"? Ya no verás este grupo en tu lista.`,
+      confirmText: 'Dejar grupo',
+      confirmWarn: true
+    };
+    this.dialog.open(ConfirmDialogComponent, { data, width: '400px' }).afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.actionGroupId = group.id;
+      this.groupService.leaveGroup(group.id).subscribe({
+        next: () => {
+          this.myGroups = this.myGroups.filter(g => g.id !== group.id);
+          this.actionGroupId = null;
+          this.notification.success(`Has dejado el grupo ${group.name}`);
+        },
+        error: (err: { message?: string }) => {
+          this.actionGroupId = null;
+          this.notification.error(err?.message ?? 'Error al dejar el grupo');
+        }
+      });
     });
   }
 
   deleteGroup(group: Group, event: Event): void {
     event.preventDefault();
     event.stopPropagation();
-    if (!confirm(`¿Eliminar el grupo "${group.name}"? Se borrarán todos los datos del grupo (miembros, bloques, configuración). Esta acción no se puede deshacer.`)) return;
-    this.actionGroupId = group.id;
-    this.groupService.deleteGroup(group.id).subscribe({
-      next: () => {
-        this.myGroups = this.myGroups.filter(g => g.id !== group.id);
-        this.actionGroupId = null;
-        this.snackBar.open(`Grupo ${group.name} eliminado`, undefined, { duration: 3000 });
-      },
-      error: (err: { message?: string }) => {
-        this.actionGroupId = null;
-        this.snackBar.open(err?.message ?? 'Error al eliminar el grupo', 'Cerrar', { duration: 4000 });
-      }
+    const data: ConfirmDialogData = {
+      title: 'Eliminar grupo',
+      message: `¿Eliminar el grupo "${group.name}"?\n\nSe borrarán todos los datos del grupo (miembros, bloques, configuración). Esta acción no se puede deshacer.`,
+      confirmText: 'Eliminar',
+      confirmWarn: true
+    };
+    this.dialog.open(ConfirmDialogComponent, { data, width: '400px' }).afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.actionGroupId = group.id;
+      this.groupService.deleteGroup(group.id).subscribe({
+        next: () => {
+          this.myGroups = this.myGroups.filter(g => g.id !== group.id);
+          this.actionGroupId = null;
+          this.notification.success(`Grupo ${group.name} eliminado`);
+        },
+        error: (err: { message?: string }) => {
+          this.actionGroupId = null;
+          this.notification.error(err?.message ?? 'Error al eliminar el grupo');
+        }
+      });
     });
   }
 }

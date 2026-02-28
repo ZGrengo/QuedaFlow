@@ -51,6 +51,46 @@ export class BlocksService {
     );
   }
 
+  /**
+   * Inserta varios bloques de una vez (ej. horario fijo de lunes a viernes).
+   * Aplica split de medianoche a cada bloque.
+   */
+  addBlocksBulk(dtos: CreateBlockDto[]): Observable<{ inserted: number }> {
+    return from(this.supabase.auth.getUser()).pipe(
+      switchMap(({ data: { user }, error: userError }) => {
+        if (userError || !user) throw new Error('Debes iniciar sesión para añadir bloques');
+        const allBlocks: AvailabilityBlock[] = [];
+        dtos.forEach(dto => {
+          const block: AvailabilityBlock = {
+            ...dto,
+            user_id: user.id,
+            source: 'MANUAL'
+          };
+          const split = splitMidnightBlock(block);
+          split.forEach(s => allBlocks.push({
+            ...block,
+            date: s.date,
+            start_min: s.start_min,
+            end_min: s.end_min
+          }));
+        });
+        if (allBlocks.length === 0) {
+          return from(Promise.resolve({ data: [], error: null }));
+        }
+        return from(
+          this.supabase
+            .from('availability_blocks')
+            .insert(allBlocks)
+            .select('id')
+        );
+      }),
+      map(({ data, error }) => {
+        if (error) throw error;
+        return { inserted: (data?.length ?? 0) };
+      })
+    );
+  }
+
   getBlocksByGroup(groupId: string): Observable<AvailabilityBlock[]> {
     return from(
       this.supabase

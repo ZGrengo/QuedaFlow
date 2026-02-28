@@ -5,7 +5,8 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
+import { NotificationService } from '../../../core/services/notification.service';
 import { GroupService, Group } from '../../../core/services/group.service';
 import { AuthService } from '../../../core/services/auth.service';
 
@@ -26,7 +27,7 @@ import { AuthService } from '../../../core/services/auth.service';
       <mat-card *ngIf="group" class="qf-surface">
         <mat-card-header>
           <mat-card-title>{{ group.name }}</mat-card-title>
-          <mat-card-subtitle>Código: {{ group.code }}</mat-card-subtitle>
+          <mat-card-subtitle>Código: <span class="code-copy" (click)="copyInviteLink()" title="Clic para copiar enlace de invitación">{{ group.code }}</span></mat-card-subtitle>
         </mat-card-header>
         <mat-card-content>
           <div class="actions">
@@ -85,6 +86,16 @@ import { AuthService } from '../../../core/services/auth.service';
     .error {
       color: var(--qf-primary);
     }
+
+    .code-copy {
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .code-copy:hover {
+      opacity: 0.85;
+    }
   `]
 })
 export class GroupDetailComponent implements OnInit {
@@ -98,16 +109,16 @@ export class GroupDetailComponent implements OnInit {
     private router: Router,
     private groupService: GroupService,
     private authService: AuthService,
-    private snackBar: MatSnackBar
+    private notification: NotificationService
   ) { }
 
   copyInviteLink() {
     if (!this.group) return;
     const url = `${window.location.origin}/join-group?code=${encodeURIComponent(this.group.code)}`;
     navigator.clipboard.writeText(url).then(() => {
-      this.snackBar.open('Enlace de invitación copiado al portapapeles', '', { duration: 3000 });
+      this.notification.success('Enlace de invitación copiado');
     }).catch(() => {
-      this.snackBar.open('No se pudo copiar el enlace', '', { duration: 3000 });
+      this.notification.error('No se pudo copiar el enlace');
     });
   }
 

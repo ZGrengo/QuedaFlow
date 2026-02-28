@@ -10,10 +10,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { GroupService, Group } from '../../../core/services/group.service';
+import { NotificationService } from '../../../core/services/notification.service';
+import { ConfirmDialogComponent, ConfirmDialogData } from '../../../core/components/confirm-dialog/confirm-dialog.component';
 import { AuthService } from '../../../core/services/auth.service';
-import { hhmmToMin, minToHhmm } from '@domain/index';
+import { hhmmToMin, minToHhmm, timeRangesOverlap } from '@domain/index';
 
 const DOW_LABELS: Record<number, string> = {
   0: 'Domingo',
@@ -40,6 +43,7 @@ const DOW_LABELS: Record<number, string> = {
     MatDatepickerModule,
     MatNativeDateModule,
     MatSelectModule,
+    MatDialogModule,
     MatSnackBarModule
   ],
   template: `
@@ -194,7 +198,8 @@ export class GroupSettingsComponent implements OnInit {
     private fb: FormBuilder,
     private groupService: GroupService,
     private authService: AuthService,
-    private snackBar: MatSnackBar
+    private notification: NotificationService,
+    private dialog: MatDialog
   ) {
     this.settingsForm = this.fb.group({
       planning_start_date: ['', Validators.required],
@@ -274,11 +279,11 @@ export class GroupSettingsComponent implements OnInit {
       next: (updated) => {
         this.group = updated;
         this.saving = false;
-        this.snackBar.open('Configuración guardada', undefined, { duration: 2000 });
+        this.notification.success('Configuración guardada', 2000);
       },
       error: (err) => {
         this.saving = false;
-        this.snackBar.open(err?.message || 'Error al guardar', 'Cerrar', { duration: 4000 });
+        this.notification.error(err?.message || 'Error al guardar');
       }
     });
   }
@@ -289,7 +294,16 @@ export class GroupSettingsComponent implements OnInit {
     const start_min = hhmmToMin(v.start_time);
     const end_min = hhmmToMin(v.end_time);
     if (start_min >= end_min && !(start_min >= 1320 && end_min <= 480)) {
-      this.snackBar.open('Inicio debe ser anterior a fin (o cruzar medianoche)', 'Cerrar', { duration: 4000 });
+      this.notification.error('Inicio debe ser anterior a fin (o cruzar medianoche)');
+      return;
+    }
+    const newDow = v.dow ?? null;
+    const overlapsExisting = this.blockedWindows.some(w => {
+      const sameDay = w.dow === newDow || w.dow === null || newDow === null;
+      return sameDay && timeRangesOverlap(w.start_min, w.end_min, start_min, end_min);
+    });
+    if (overlapsExisting) {
+      this.notification.error('Ya existe una franja con el mismo día y horario solapado');
       return;
     }
     this.groupService.addBlockedWindow(this.group.id, {
@@ -300,21 +314,29 @@ export class GroupSettingsComponent implements OnInit {
       next: () => {
         this.windowForm.reset({ start_time: '00:00', end_time: '07:59', dow: null });
         this.loadBlockedWindows();
-        this.snackBar.open('Franja añadida', undefined, { duration: 2000 });
+        this.notification.success('Franja añadida', 2000);
       },
       error: (err) => {
-        this.snackBar.open(err?.message || 'Error al añadir franja', 'Cerrar', { duration: 4000 });
+        this.notification.error(err?.message || 'Error al añadir franja');
       }
     });
   }
 
   deleteWindow(id: string) {
-    if (!confirm('¿Eliminar esta franja?')) return;
-    this.groupService.deleteBlockedWindow(id).subscribe({
-      next: () => {
-        this.loadBlockedWindows();
-        this.snackBar.open('Franja eliminada', undefined, { duration: 2000 });
-      }
+    const data: ConfirmDialogData = {
+      title: 'Eliminar franja',
+      message: '¿Eliminar esta franja?',
+      confirmText: 'Eliminar',
+      confirmWarn: true
+    };
+    this.dialog.open(ConfirmDialogComponent, { data, width: '400px' }).afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.groupService.deleteBlockedWindow(id).subscribe({
+        next: () => {
+          this.loadBlockedWindows();
+          this.notification.success('Franja eliminada', 2000);
+        }
+      });
     });
   }
 }

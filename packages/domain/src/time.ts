@@ -46,6 +46,27 @@ export function overlaps(
 }
 
 /**
+ * Checks if two time ranges overlap, including ranges that cross midnight
+ */
+export function timeRangesOverlap(
+  start1: number,
+  end1: number,
+  start2: number,
+  end2: number
+): boolean {
+  const segments = (s: number, e: number): [number, number][] =>
+    s < e ? [[s, e]] : [[s, 1440], [0, e]];
+  const seg1 = segments(start1, end1);
+  const seg2 = segments(start2, end2);
+  for (const [a, b] of seg1) {
+    for (const [c, d] of seg2) {
+      if (overlaps(a, b, c, d)) return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Clamps a value between min and max
  */
 export function clamp(value: number, min: number, max: number): number {
