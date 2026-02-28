@@ -24,7 +24,7 @@ import { minToHhmm } from '@domain/index';
   template: `
     <div class="qf-page container">
       <div class="nav-back">
-        <button mat-stroked-button [routerLink]="['/g', code]">
+        <button mat-stroked-button class="qf-btn-secondary" [routerLink]="['/g', code]">
           <mat-icon>arrow_back</mat-icon>
           Volver al grupo
         </button>
@@ -116,7 +116,7 @@ export class PlannerViewComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private plannerService: PlannerService
-  ) {}
+  ) { }
 
   ngOnInit() {
     const code = this.route.snapshot.paramMap.get('code');

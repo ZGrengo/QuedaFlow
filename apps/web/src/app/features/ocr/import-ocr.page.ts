@@ -37,7 +37,7 @@ type Step = 'upload' | 'results' | 'saving' | 'summary';
   template: `
     <div class="qf-page container">
       <div class="nav-back">
-        <button mat-stroked-button [routerLink]="['/g', code]">
+        <button mat-stroked-button class="qf-btn-secondary" [routerLink]="['/g', code]">
           <mat-icon>arrow_back</mat-icon>
           Volver al grupo
         </button>
@@ -46,7 +46,7 @@ type Step = 'upload' | 'results' | 'saving' | 'summary';
       <mat-card class="qf-surface">
         <mat-card-header>
           <mat-card-title>Importar Horarios por OCR</mat-card-title>
-          <mat-card-subtitle>Sube una captura de tu app de horarios y el sistema detectará los turnos automáticamente</mat-card-subtitle>
+          <mat-card-subtitle>Sube una o varias capturas de tu app de horarios y el sistema detectará los turnos automáticamente</mat-card-subtitle>
         </mat-card-header>
         <mat-card-content>
           <!-- Step 1: Upload -->
@@ -55,6 +55,7 @@ type Step = 'upload' | 'results' | 'saving' | 'summary';
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/jpg"
+                multiple
                 (change)="onFileChange($event)"
                 id="file-input"
                 style="display: none"
@@ -62,17 +63,20 @@ type Step = 'upload' | 'results' | 'saving' | 'summary';
               <label for="file-input">
                 <button mat-raised-button class="qf-btn-primary" type="button" (click)="fileInput.click()">
                   <mat-icon>upload</mat-icon>
-                  Seleccionar imagen
+                  Seleccionar imagen{{ selectedFiles.length > 0 ? 's (más)' : '' }}
                 </button>
               </label>
-              <div *ngIf="selectedFile" class="file-info">
-                <p>Archivo seleccionado: {{ selectedFile.name }}</p>
-                <img [src]="imagePreview" alt="Preview" class="preview-image" *ngIf="imagePreview">
+              <div *ngIf="selectedFiles.length > 0" class="file-info">
+                <p class="file-count">{{ selectedFiles.length }} archivo(s) seleccionado(s):</p>
+                <ul class="file-list">
+                  <li *ngFor="let f of selectedFiles">{{ f.name }} <span class="file-size">({{ formatFileSize(f.size) }})</span></li>
+                </ul>
+                <img [src]="imagePreviews[0]" alt="Vista previa" class="preview-image" *ngIf="imagePreviews[0]">
               </div>
-              <div *ngIf="selectedFile && !processingOcr" class="actions">
+              <div *ngIf="selectedFiles.length > 0 && !processingOcr" class="actions">
                 <button mat-raised-button class="qf-btn-primary" type="button" (click)="analyzeImage()">
                   <mat-icon>text_fields</mat-icon>
-                  Analizar con OCR
+                  Analizar {{ selectedFiles.length > 1 ? selectedFiles.length + ' imágenes' : 'con OCR' }}
                 </button>
                 <button mat-button type="button" (click)="cancelUpload()">
                   Cancelar
@@ -80,6 +84,7 @@ type Step = 'upload' | 'results' | 'saving' | 'summary';
               </div>
               <div *ngIf="processingOcr" class="ocr-progress">
                 <p>{{ ocrProgressStatus }}</p>
+                <p *ngIf="selectedFiles.length > 1" class="ocr-file-index">Imagen {{ currentFileIndex + 1 }} de {{ selectedFiles.length }}</p>
                 <mat-progress-bar mode="determinate" [value]="ocrProgress * 100"></mat-progress-bar>
                 <button mat-button type="button" (click)="cancelOcr()" class="cancel-btn">
                   Cancelar
@@ -204,6 +209,29 @@ type Step = 'upload' | 'results' | 'saving' | 'summary';
       margin-top: 16px;
     }
 
+    .file-count {
+      margin: 0 0 8px 0;
+      font-weight: 500;
+    }
+
+    .file-list {
+      margin: 0 0 12px 0;
+      padding-left: 20px;
+      color: var(--qf-text-muted);
+      font-size: 0.9rem;
+    }
+
+    .file-size {
+      font-size: 0.85rem;
+      opacity: 0.85;
+    }
+
+    .ocr-file-index {
+      margin: 4px 0 8px 0;
+      font-size: 0.9rem;
+      color: var(--qf-text-muted);
+    }
+
     .preview-image {
       max-width: 100%;
       max-height: 400px;
@@ -308,8 +336,9 @@ export class ImportOcrPageComponent implements OnInit, OnDestroy {
   code = '';
   group: Group | null = null;
   currentStep: Step = 'upload';
-  selectedFile: File | null = null;
-  imagePreview: string | null = null;
+  selectedFiles: File[] = [];
+  imagePreviews: string[] = [];
+  currentFileIndex = 0;
   processingOcr = false;
   ocrProgress = 0;
   ocrProgressStatus = '';
@@ -325,6 +354,7 @@ export class ImportOcrPageComponent implements OnInit, OnDestroy {
 
   uploadForm: FormGroup;
   private ocrCancelToken: { cancel: () => void } | null = null;
+  private readonly maxPreviews = 6;
 
   constructor(
     private route: ActivatedRoute,
@@ -366,17 +396,29 @@ export class ImportOcrPageComponent implements OnInit, OnDestroy {
   onFileChange(event: Event) {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
-      this.selectedFile = input.files[0];
-      this.createImagePreview(this.selectedFile);
+      this.selectedFiles = Array.from(input.files);
+      this.imagePreviews = new Array(Math.min(this.selectedFiles.length, this.maxPreviews));
+      const toLoad = this.imagePreviews.length;
+      for (let i = 0; i < toLoad; i++) {
+        this.createImagePreview(this.selectedFiles[i], (dataUrl) => {
+          this.imagePreviews[i] = dataUrl;
+        });
+      }
     }
   }
 
-  createImagePreview(file: File) {
+  createImagePreview(file: File, onLoad: (dataUrl: string) => void) {
     const reader = new FileReader();
     reader.onload = (e) => {
-      this.imagePreview = e.target?.result as string;
+      onLoad((e.target?.result as string) ?? '');
     };
     reader.readAsDataURL(file);
+  }
+
+  formatFileSize(bytes: number): string {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   }
 
   onFileSelected() {
@@ -384,53 +426,79 @@ export class ImportOcrPageComponent implements OnInit, OnDestroy {
   }
 
   async analyzeImage() {
-    if (!this.selectedFile || !this.group) return;
+    if (this.selectedFiles.length === 0 || !this.group) return;
 
     this.processingOcr = true;
     this.ocrProgress = 0;
     this.ocrProgressStatus = 'Inicializando OCR...';
+    const totalFiles = this.selectedFiles.length;
+    const allShifts: DetectedShift[] = [];
+    const allIssues: ParseIssue[] = [];
+    let allRawText = '';
 
     try {
-      const text = await this.ocrService.recognizeText(
-        this.selectedFile,
-        (progress) => {
-          this.ocrProgress = progress.progress;
-          this.ocrProgressStatus = progress.status;
-        }
-      );
+      for (let i = 0; i < totalFiles; i++) {
+        this.currentFileIndex = i;
+        this.ocrProgressStatus = totalFiles > 1
+          ? `Analizando imagen ${i + 1} de ${totalFiles}...`
+          : 'Analizando texto...';
+        this.ocrProgress = (i + 0.2) / totalFiles;
 
-      this.ocrRawText = text;
-      const parseResult = this.ocrService.parseShifts(
-        text,
-        this.group.planning_start_date,
-        this.group.planning_end_date
-      );
+        const text = await this.ocrService.recognizeText(
+          this.selectedFiles[i],
+          (progress) => {
+            this.ocrProgress = (i + progress.progress * 0.8) / totalFiles;
+            this.ocrProgressStatus = progress.status;
+          }
+        );
 
-      this.detectedShifts = parseResult.shifts;
-      this.parseIssues = parseResult.issues;
+        if (allRawText) allRawText += '\n\n';
+        allRawText += `--- ${this.selectedFiles[i].name} ---\n${text}`;
+
+        const parseResult = this.ocrService.parseShifts(
+          text,
+          this.group.planning_start_date,
+          this.group.planning_end_date
+        );
+
+        allShifts.push(...parseResult.shifts);
+        parseResult.issues.forEach(issue => {
+          allIssues.push({
+            line: `${this.selectedFiles[i].name}: ${issue.line}`,
+            reason: issue.reason
+          });
+        });
+      }
+
+      this.ocrRawText = allRawText;
+      this.detectedShifts = allShifts;
+      this.parseIssues = allIssues;
       this.currentStep = 'results';
 
       if (this.detectedShifts.length === 0) {
         this.snackBar.open('No se detectaron turnos. Revisa el texto OCR en el panel de debug.', 'Cerrar', { duration: 5000 });
+      } else if (totalFiles > 1) {
+        this.snackBar.open(`${this.detectedShifts.length} turnos detectados en ${totalFiles} imagen(es)`, 'Cerrar', { duration: 3000 });
       }
     } catch (error: any) {
       this.snackBar.open('Error al procesar OCR: ' + (error.message || 'Error desconocido'), 'Cerrar', { duration: 5000 });
       console.error('OCR error:', error);
     } finally {
       this.processingOcr = false;
+      this.currentFileIndex = 0;
     }
   }
 
   cancelOcr() {
-    // Tesseract doesn't have a built-in cancel, but we can mark as cancelled
     this.processingOcr = false;
     this.ocrProgress = 0;
     this.ocrProgressStatus = '';
+    this.currentFileIndex = 0;
   }
 
   cancelUpload() {
-    this.selectedFile = null;
-    this.imagePreview = null;
+    this.selectedFiles = [];
+    this.imagePreviews = [];
     this.uploadForm.reset();
   }
 
@@ -499,8 +567,8 @@ export class ImportOcrPageComponent implements OnInit, OnDestroy {
 
   reset() {
     this.currentStep = 'upload';
-    this.selectedFile = null;
-    this.imagePreview = null;
+    this.selectedFiles = [];
+    this.imagePreviews = [];
     this.ocrRawText = '';
     this.detectedShifts = [];
     this.parseIssues = [];

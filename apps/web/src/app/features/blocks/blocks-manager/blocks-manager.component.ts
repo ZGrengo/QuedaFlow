@@ -40,7 +40,7 @@ import { formatDateDDMMYYYY } from '../../../core/utils/date-format';
   template: `
     <div class="qf-page container">
       <div class="nav-back">
-        <button mat-stroked-button [routerLink]="['/g', code]">
+        <button mat-stroked-button class="qf-btn-secondary" [routerLink]="['/g', code]">
           <mat-icon>arrow_back</mat-icon>
           Volver al grupo
         </button>

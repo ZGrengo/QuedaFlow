@@ -40,61 +40,65 @@ import { GroupService, Group } from '../../../core/services/group.service';
         </button>
       </mat-toolbar>
 
-      <div class="content">
-        <h1 class="welcome">Bienvenido</h1>
-        <p class="subtitle">Crea un grupo o únete a uno existente para encontrar huecos entre compañeros.</p>
+      <div class="qf-dashboard-wrapper">
+        <header class="qf-dashboard-hero">
+          <h1 class="qf-dashboard-hero__title">Bienvenido</h1>
+          <p class="qf-dashboard-hero__subtitle">Crea un grupo o únete a uno existente para encontrar huecos entre compañeros.</p>
+        </header>
 
-        <div class="cards">
-          <mat-card class="qf-surface action-card">
-            <mat-card-header>
-              <mat-card-title>
-                <mat-icon>add_circle</mat-icon>
-                Crear grupo
-              </mat-card-title>
-              <mat-card-subtitle>Crea un nuevo grupo y comparte el código con tus compañeros.</mat-card-subtitle>
-            </mat-card-header>
-            <mat-card-actions>
-              <button *ngIf="canCreateGroup" mat-raised-button class="qf-btn-primary" routerLink="/create-group">
-                Crear grupo
-              </button>
-              <div *ngIf="!canCreateGroup" class="limit-wrap">
-                <p class="limit-message">
-                  <mat-icon>info</mat-icon>
-                  Máximo 5 grupos creados. Elimina uno que hayas creado para crear otro.
-                </p>
-                <button mat-raised-button disabled>Crear grupo</button>
-              </div>
-            </mat-card-actions>
-          </mat-card>
-
-          <mat-card class="qf-surface action-card">
-            <mat-card-header>
-              <mat-card-title>
-                <mat-icon>group_add</mat-icon>
-                Unirse a un grupo
-              </mat-card-title>
-              <mat-card-subtitle>Introduce el código de 6 caracteres que te ha compartido el host.</mat-card-subtitle>
-            </mat-card-header>
-            <mat-card-content>
-              <form [formGroup]="joinForm" (ngSubmit)="onJoinSubmit()">
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Código del grupo</mat-label>
-                  <input matInput formControlName="code" maxlength="6" placeholder="ABC123" (input)="onCodeInput($event)">
-                  <mat-hint>6 caracteres</mat-hint>
-                </mat-form-field>
-                <div *ngIf="joinMessage" class="message" [class.error]="joinError">
-                  {{ joinMessage }}
-                </div>
-                <button mat-raised-button class="qf-btn-primary full-width" type="submit" [disabled]="joinForm.invalid || joinLoading">
-                  {{ joinLoading ? 'Uniéndose...' : 'Unirse' }}
+        <div class="qf-dashboard-panel">
+          <div class="qf-dashboard-panel__cards">
+            <mat-card class="qf-surface qf-dashboard-action-card">
+              <mat-card-header>
+                <mat-card-title>
+                  <mat-icon>add_circle</mat-icon>
+                  Crear grupo
+                </mat-card-title>
+                <mat-card-subtitle>Crea un nuevo grupo y comparte el código con tus compañeros.</mat-card-subtitle>
+              </mat-card-header>
+              <mat-card-actions>
+                <button *ngIf="canCreateGroup" mat-raised-button class="qf-btn-primary" routerLink="/create-group">
+                  Crear grupo
                 </button>
-              </form>
-            </mat-card-content>
-          </mat-card>
+                <div *ngIf="!canCreateGroup" class="limit-wrap">
+                  <p class="limit-message">
+                    <mat-icon>info</mat-icon>
+                    Máximo 5 grupos creados. Elimina uno que hayas creado para crear otro.
+                  </p>
+                  <button mat-raised-button disabled>Crear grupo</button>
+                </div>
+              </mat-card-actions>
+            </mat-card>
+
+            <mat-card class="qf-surface qf-dashboard-action-card">
+              <mat-card-header>
+                <mat-card-title>
+                  <mat-icon>group_add</mat-icon>
+                  Unirse a un grupo
+                </mat-card-title>
+                <mat-card-subtitle>Introduce el código de 6 caracteres que te ha compartido el host.</mat-card-subtitle>
+              </mat-card-header>
+              <mat-card-content>
+                <form [formGroup]="joinForm" (ngSubmit)="onJoinSubmit()">
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Código del grupo</mat-label>
+                    <input matInput formControlName="code" maxlength="6" placeholder="ABC123" (input)="onCodeInput($event)">
+                    <mat-hint>6 caracteres</mat-hint>
+                  </mat-form-field>
+                  <div *ngIf="joinMessage" class="message" [class.error]="joinError">
+                    {{ joinMessage }}
+                  </div>
+                  <button mat-raised-button class="qf-btn-primary full-width" type="submit" [disabled]="joinForm.invalid || joinLoading">
+                    {{ joinLoading ? 'Uniéndose...' : 'Unirse' }}
+                  </button>
+                </form>
+              </mat-card-content>
+            </mat-card>
+          </div>
         </div>
 
-        <section class="active-groups qf-section">
-          <h2 class="section-title">
+        <section class="qf-dashboard-groups qf-section">
+          <h2 class="qf-dashboard-groups__title">
             <mat-icon>groups</mat-icon>
             Grupos activos
           </h2>
@@ -102,9 +106,9 @@ import { GroupService, Group } from '../../../core/services/group.service';
           <div *ngIf="!myGroupsLoading && myGroups.length === 0" class="no-groups qf-muted">
             No tienes grupos aún. Crea uno o únete con un código arriba.
           </div>
-          <div *ngIf="!myGroupsLoading && myGroups.length > 0" class="groups-list">
-            <div *ngFor="let group of myGroups" class="group-item qf-surface">
-              <a [routerLink]="['/g', group.code]" class="group-item-link">
+          <div *ngIf="!myGroupsLoading && myGroups.length > 0" class="qf-dashboard-groups__list">
+            <div *ngFor="let group of myGroups" class="qf-dashboard-group-card qf-surface">
+              <a [routerLink]="['/g', group.code]" class="qf-dashboard-group-card__link">
                 <span class="group-name">{{ group.name }}</span>
                 <span class="group-code">Código: {{ group.code }}</span>
                 <mat-icon class="group-arrow">arrow_forward</mat-icon>
@@ -130,6 +134,7 @@ import { GroupService, Group } from '../../../core/services/group.service';
     </div>
   `,
   styles: [`
+    /* ---------- Layout ---------- */
     .dashboard {
       min-height: 100vh;
     }
@@ -154,48 +159,77 @@ import { GroupService, Group } from '../../../core/services/group.service';
       opacity: 0.9;
     }
 
-    .content {
-      max-width: 900px;
+    .qf-dashboard-wrapper {
+      max-width: 1100px;
       margin: 0 auto;
-      padding: 32px 16px;
+      padding: 64px 24px;
+      background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.02), transparent 200px);
+      background-size: 100% 200px;
+      background-repeat: no-repeat;
+      background-position: top;
     }
 
-    .welcome {
-      margin: 0 0 8px 0;
-      font-size: 1.75rem;
+    /* ---------- Hero ---------- */
+    .qf-dashboard-hero {
+      text-align: center;
+      padding: 48px 0 72px;
+    }
+
+    .qf-dashboard-hero__title {
+      margin: 0 0 16px 0;
+      font-size: clamp(2rem, 5vw, 2.75rem);
+      font-weight: 700;
       color: var(--qf-text-on-dark);
+      letter-spacing: -0.02em;
+      line-height: 1.2;
     }
 
-    .subtitle {
+    .qf-dashboard-hero__subtitle {
+      margin: 0;
+      font-size: clamp(1rem, 2vw, 1.125rem);
       color: var(--qf-text-muted-on-dark);
-      margin: 0 0 32px 0;
+      max-width: 520px;
+      margin-left: auto;
+      margin-right: auto;
+      line-height: 1.5;
     }
 
-    .cards {
+    /* ---------- Panel (Crear / Unirse) ---------- */
+    .qf-dashboard-panel {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      border-radius: 20px;
+      padding: 32px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      margin-bottom: 72px;
+    }
+
+    .qf-dashboard-panel__cards {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 24px;
     }
 
-    .action-card {
+    .qf-dashboard-action-card {
       padding: 20px;
     }
 
-    .action-card mat-card-title {
+    .qf-dashboard-action-card mat-card-title {
       display: flex;
       align-items: center;
       gap: 8px;
     }
 
-    .action-card mat-card-title mat-icon {
+    .qf-dashboard-action-card mat-card-title mat-icon {
       font-size: 28px;
       width: 28px;
       height: 28px;
       color: var(--qf-primary);
     }
 
-    .action-card mat-card-actions,
-    .action-card mat-card-content {
+    .qf-dashboard-action-card mat-card-actions,
+    .qf-dashboard-action-card mat-card-content {
       padding-left: 0;
       padding-right: 0;
     }
@@ -210,8 +244,8 @@ import { GroupService, Group } from '../../../core/services/group.service';
       gap: 8px;
       margin: 0 0 12px 0;
       padding: 12px;
-      background: rgba(255, 210, 54, 0.15);
-      color: #8b6914;
+      background: color-mix(in srgb, var(--qf-warning) 18%, transparent);
+      color: color-mix(in srgb, var(--qf-warning) 45%, black);
       border-radius: 4px;
       font-size: 0.875rem;
     }
@@ -231,77 +265,87 @@ import { GroupService, Group } from '../../../core/services/group.service';
       margin: 12px 0;
       padding: 10px;
       border-radius: 4px;
-      background: rgba(162, 211, 194, 0.25);
-      color: #1a5c4a;
+      background: color-mix(in srgb, var(--qf-success) 28%, transparent);
+      color: color-mix(in srgb, var(--qf-success) 35%, black);
       font-size: 0.875rem;
     }
 
     .message.error {
-      background: rgba(203, 37, 70, 0.12);
+      background: color-mix(in srgb, var(--qf-primary) 14%, transparent);
       color: var(--qf-primary);
     }
 
-    .active-groups {
-      padding-top: 24px;
-      border-top: 1px solid var(--qf-border-on-dark);
+    /* ---------- Grupos activos ---------- */
+    .qf-dashboard-groups {
+      padding-top: 0;
+      margin-top: 0;
     }
 
-    .section-title {
+    .qf-dashboard-groups__title {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin: 0 0 16px 0;
-      font-size: 1.25rem;
+      gap: 10px;
+      margin: 0 0 24px 0;
+      font-size: clamp(1.25rem, 2vw, 1.375rem);
+      font-weight: 600;
       color: var(--qf-text-on-dark);
     }
 
-    .section-title mat-icon {
+    .qf-dashboard-groups__title mat-icon {
       font-size: 28px;
       width: 28px;
       height: 28px;
       color: var(--qf-primary);
     }
 
-    .groups-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+    .qf-dashboard-groups .loading-groups,
+    .qf-dashboard-groups .no-groups {
+      color: var(--qf-text-muted-on-dark);
+      margin: 0;
     }
 
-    .group-item {
+    .qf-dashboard-groups__list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .qf-dashboard-group-card {
       display: flex;
       align-items: center;
       gap: 8px;
       padding: 0;
-      border-radius: 12px;
-      border: 1px solid rgba(0, 0, 0, 0.06);
-      transition: box-shadow 0.2s, border-color 0.2s;
+      border-radius: 16px;
+      border: 1px solid var(--qf-border-on-dark);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
       overflow: hidden;
     }
 
-    .group-item:hover {
-      box-shadow: var(--qf-shadow-soft);
+    .qf-dashboard-group-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--qf-shadow);
+      border-color: rgba(255, 255, 255, 0.15);
     }
 
-    .group-item-link {
+    .qf-dashboard-group-card__link {
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 16px;
+      padding: 18px 20px;
       flex: 1;
       text-decoration: none;
       color: inherit;
       min-width: 0;
     }
 
-    .group-item-link:hover {
+    .qf-dashboard-group-card__link:hover {
       background: var(--qf-surface-2);
     }
 
     .group-name {
-      font-weight: 500;
+      font-weight: 600;
       flex: 1;
-      color: #1a1a1e;
+      color: inherit;
     }
 
     .group-code {
@@ -318,11 +362,40 @@ import { GroupService, Group } from '../../../core/services/group.service';
     }
 
     .leave-btn .spinner {
-      animation: spin 1s linear infinite;
+      animation: qf-spin 1s linear infinite;
     }
 
-    @keyframes spin {
+    @keyframes qf-spin {
       to { transform: rotate(360deg); }
+    }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 768px) {
+      .qf-dashboard-wrapper {
+        padding: 40px 20px;
+      }
+
+      .qf-dashboard-hero {
+        padding: 32px 0 48px;
+      }
+
+      .qf-dashboard-panel {
+        padding: 24px 20px;
+        margin-bottom: 48px;
+      }
+
+      .qf-dashboard-panel__cards {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+
+      .qf-dashboard-groups__list {
+        gap: 10px;
+      }
+
+      .qf-dashboard-group-card__link {
+        padding: 14px 16px;
+      }
     }
   `]
 })
