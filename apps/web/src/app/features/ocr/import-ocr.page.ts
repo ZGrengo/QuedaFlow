@@ -472,7 +472,7 @@ export class ImportOcrPageComponent implements OnInit, OnDestroy {
       }
 
       this.ocrRawText = allRawText;
-      this.detectedShifts = allShifts;
+      this.detectedShifts = this.sortShiftsByDateAndTime(allShifts);
       this.parseIssues = allIssues;
       this.currentStep = 'results';
 
@@ -512,6 +512,7 @@ export class ImportOcrPageComponent implements OnInit, OnDestroy {
 
   onShiftChange(index: number, updatedShift: DetectedShift) {
     this.detectedShifts[index] = updatedShift;
+    this.detectedShifts = this.sortShiftsByDateAndTime([...this.detectedShifts]);
   }
 
   onShiftDelete(index: number) {
@@ -526,7 +527,15 @@ export class ImportOcrPageComponent implements OnInit, OnDestroy {
       endMin: 1020, // 17:00
       crossesMidnight: false
     };
-    this.detectedShifts.push(newShift);
+    this.detectedShifts = this.sortShiftsByDateAndTime([...this.detectedShifts, newShift]);
+  }
+
+  private sortShiftsByDateAndTime(shifts: DetectedShift[]): DetectedShift[] {
+    return [...shifts].sort((a, b) => {
+      const dateCmp = a.dateISO.localeCompare(b.dateISO);
+      if (dateCmp !== 0) return dateCmp;
+      return a.startMin - b.startMin;
+    });
   }
 
   saveShifts() {

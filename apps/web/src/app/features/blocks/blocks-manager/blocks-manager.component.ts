@@ -136,6 +136,10 @@ import { formatDateDDMMYYYY } from '../../../core/utils/date-format';
       <mat-card class="qf-surface blocks-list">
         <mat-card-header>
           <mat-card-title>Mis Bloques</mat-card-title>
+          <button *ngIf="myBlocks.length > 0" mat-stroked-button color="warn" (click)="deleteAllBlocks()" class="delete-all-btn">
+            <mat-icon>delete_sweep</mat-icon>
+            Eliminar todos
+          </button>
         </mat-card-header>
         <mat-card-content>
           <div *ngFor="let block of myBlocks" class="block-item">
@@ -210,6 +214,22 @@ import { formatDateDDMMYYYY } from '../../../core/utils/date-format';
 
     .blocks-list {
       margin-top: 24px;
+    }
+
+    .blocks-list mat-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .delete-all-btn mat-icon {
+      margin-right: 4px;
+      vertical-align: middle;
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
     }
 
     .block-item {
@@ -496,6 +516,28 @@ export class BlocksManagerComponent implements OnInit {
         },
         error: (err) => {
           this.notification.error(err?.message ?? 'Error al eliminar bloque');
+          console.error(err);
+        }
+      });
+    });
+  }
+
+  deleteAllBlocks() {
+    const data: ConfirmDialogData = {
+      title: 'Eliminar todos los bloques',
+      message: `¿Eliminar los ${this.myBlocks.length} bloques? Esta acción no se puede deshacer.`,
+      confirmText: 'Eliminar todos',
+      confirmWarn: true
+    };
+    this.dialog.open(ConfirmDialogComponent, { data, width: '400px' }).afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.blocksService.deleteAllUserBlocks(this.groupId, this.userId).subscribe({
+        next: () => {
+          this.loadMyBlocks();
+          this.notification.success('Todos los bloques han sido eliminados');
+        },
+        error: (err) => {
+          this.notification.error(err?.message ?? 'Error al eliminar bloques');
           console.error(err);
         }
       });

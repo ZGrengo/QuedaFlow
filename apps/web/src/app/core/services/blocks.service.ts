@@ -139,6 +139,20 @@ export class BlocksService {
     );
   }
 
+  deleteAllUserBlocks(groupId: string, userId: string): Observable<void> {
+    return from(
+      this.supabase
+        .from('availability_blocks')
+        .delete()
+        .eq('group_id', groupId)
+        .eq('user_id', userId)
+    ).pipe(
+      map(({ error }) => {
+        if (error) throw error;
+      })
+    );
+  }
+
   getUserBlocks(groupId: string, userId: string): Observable<AvailabilityBlock[]> {
     return from(
       this.supabase
