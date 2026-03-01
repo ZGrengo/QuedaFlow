@@ -17,6 +17,7 @@ import { NotificationService } from '../../../core/services/notification.service
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../core/components/confirm-dialog/confirm-dialog.component';
 import { AuthService } from '../../../core/services/auth.service';
 import { hhmmToMin, minToHhmm, timeRangesOverlap } from '@domain/index';
+import { TimeInputComponent } from '../../../shared/time-input';
 
 const DOW_LABELS: Record<number, string> = {
   0: 'Domingo',
@@ -44,7 +45,8 @@ const DOW_LABELS: Record<number, string> = {
     MatNativeDateModule,
     MatSelectModule,
     MatDialogModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    TimeInputComponent
   ],
   template: `
     <div class="qf-page container">
@@ -123,14 +125,18 @@ const DOW_LABELS: Record<number, string> = {
           <mat-card-content>
             <form [formGroup]="windowForm" (ngSubmit)="onAddWindow()">
               <div class="form-row">
-                <mat-form-field appearance="outline">
-                  <mat-label>Inicio (HH:MM)</mat-label>
-                  <input matInput formControlName="start_time" placeholder="00:00">
-                </mat-form-field>
-                <mat-form-field appearance="outline">
-                  <mat-label>Fin (HH:MM)</mat-label>
-                  <input matInput formControlName="end_time" placeholder="07:59">
-                </mat-form-field>
+                <qf-time-input
+                  label="Inicio (HH:MM)"
+                  [control]="$any(windowForm.get('start_time'))"
+                  [required]="true"
+                  helper="Ej: 00:00">
+                </qf-time-input>
+                <qf-time-input
+                  label="Fin (HH:MM)"
+                  [control]="$any(windowForm.get('end_time'))"
+                  [required]="true"
+                  helper="Ej: 07:59">
+                </qf-time-input>
                 <mat-form-field appearance="outline">
                   <mat-label>Día</mat-label>
                   <mat-select formControlName="dow">
@@ -210,8 +216,8 @@ export class GroupSettingsComponent implements OnInit {
     }, { validators: this.planningRangeValidator });
 
     this.windowForm = this.fb.group({
-      start_time: ['00:00', [Validators.required, Validators.pattern(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/)]],
-      end_time: ['07:59', [Validators.required, Validators.pattern(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/)]],
+      start_time: ['00:00'],
+      end_time: ['07:59'],
       dow: [null as number | null]
     });
   }

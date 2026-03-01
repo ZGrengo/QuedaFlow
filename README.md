@@ -334,6 +334,8 @@ La funcionalidad de Import OCR permite subir una captura de pantalla de tu app d
    - Añadir turnos manualmente
 5. **Guarda**: Haz clic en "Guardar turnos" para insertar los bloques WORK en Supabase
 
+**Inputs de hora:** En toda la app (bloques, OCR, ventanas bloqueadas) los campos de hora aceptan formato flexible: puedes escribir `9`, `930`, `09.30` o `09:00`; al salir del campo se normaliza a HH:MM (ej: 09:00). El botón del reloj abre el selector nativo en móvil cuando está disponible.
+
 ### Limitaciones
 
 - **Calidad del OCR**: El OCR puede fallar con imágenes de baja calidad, texto borroso o fuentes muy pequeñas. Siempre revisa los turnos detectados antes de guardar.

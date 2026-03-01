@@ -73,7 +73,7 @@ type Step = 'upload' | 'results' | 'saving';
                 </ul>
                 <img [src]="imagePreviews[0]" alt="Vista previa" class="preview-image" *ngIf="imagePreviews[0]">
               </div>
-              <div *ngIf="selectedFiles.length > 0 && !processingOcr" class="actions">
+              <div *ngIf="selectedFiles.length > 0 && !processingOcr" class="actions qf-actions">
                 <button mat-raised-button class="qf-btn-primary" type="button" (click)="analyzeImage()">
                   <mat-icon>text_fields</mat-icon>
                   Analizar {{ selectedFiles.length > 1 ? selectedFiles.length + ' imágenes' : 'con OCR' }}
@@ -95,9 +95,9 @@ type Step = 'upload' | 'results' | 'saving';
 
           <!-- Step 2: Results & Confirmation -->
           <div *ngIf="currentStep === 'results'">
-            <div class="results-header">
-              <h3>Turnos Detectados ({{ detectedShifts.length }})</h3>
-              <button mat-raised-button class="qf-btn-accent" (click)="addNewShift()">
+            <div class="results-header qf-row">
+              <h3 class="results-title">Turnos Detectados ({{ detectedShifts.length }})</h3>
+              <button mat-raised-button class="qf-btn-accent add-shift-btn" (click)="addNewShift()">
                 <mat-icon>add</mat-icon>
                 Añadir turno
               </button>
@@ -121,7 +121,7 @@ type Step = 'upload' | 'results' | 'saving';
               </app-shift-editor>
             </div>
 
-            <div class="actions">
+            <div class="actions qf-actions">
               <button mat-button (click)="cancelResults()">
                 Cancelar
               </button>
@@ -186,9 +186,17 @@ type Step = 'upload' | 'results' | 'saving';
     }
 
     .actions {
-      display: flex;
-      gap: 12px;
       margin-top: 16px;
+    }
+
+    @media (max-width: 600px) {
+      .actions button {
+        min-height: 44px;
+      }
+
+      .actions .qf-btn-primary {
+        width: 100%;
+      }
     }
 
     .ocr-progress {
@@ -204,10 +212,30 @@ type Step = 'upload' | 'results' | 'saving';
     }
 
     .results-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
       margin-bottom: 16px;
+    }
+
+    .results-title {
+      margin: 0;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .add-shift-btn mat-icon {
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+
+    @media (max-width: 600px) {
+      .results-header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .add-shift-btn {
+        width: 100%;
+        min-height: 44px;
+      }
     }
 
     .omitted-notice {
@@ -221,6 +249,7 @@ type Step = 'upload' | 'results' | 'saving';
       border-radius: 8px;
       font-size: 0.9rem;
       color: var(--qf-text, inherit);
+      word-break: break-word;
     }
 
     .omitted-notice mat-icon {

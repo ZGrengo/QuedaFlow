@@ -6,6 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatMenuModule } from '@angular/material/menu';
 import { NotificationService } from '../../../core/services/notification.service';
 import { GroupService, Group } from '../../../core/services/group.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -20,7 +21,8 @@ import { AuthService } from '../../../core/services/auth.service';
     MatButtonModule,
     MatIconModule,
     MatChipsModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatMenuModule
   ],
   template: `
     <div class="qf-page container">
@@ -30,7 +32,7 @@ import { AuthService } from '../../../core/services/auth.service';
           <mat-card-subtitle>Código: <span class="code-copy" (click)="copyInviteLink()" title="Clic para copiar enlace de invitación">{{ group.code }}</span></mat-card-subtitle>
         </mat-card-header>
         <mat-card-content>
-          <div class="actions">
+          <div class="actions qf-actions">
             <button mat-raised-button class="qf-btn-primary" routerLink="/g/{{ group.code }}/blocks">
               <mat-icon>event</mat-icon>
               Gestionar Bloques
@@ -39,16 +41,32 @@ import { AuthService } from '../../../core/services/auth.service';
               <mat-icon>schedule</mat-icon>
               Ver Planner
             </button>
-            <button *ngIf="isHost" mat-stroked-button routerLink="/g/{{ group.code }}/settings">
-              <mat-icon>settings</mat-icon>
-              Configuración
-            </button>
-            <button *ngIf="isHost" mat-stroked-button (click)="copyInviteLink()">
-              <mat-icon>link</mat-icon>
-              Copiar enlace de invitación
-            </button>
+            <ng-container *ngIf="isHost">
+              <button class="actions-more-desktop" mat-stroked-button routerLink="/g/{{ group.code }}/settings">
+                <mat-icon>settings</mat-icon>
+                Configuración
+              </button>
+              <button class="actions-more-desktop" mat-stroked-button (click)="copyInviteLink()">
+                <mat-icon>link</mat-icon>
+                Copiar enlace de invitación
+              </button>
+              <button class="actions-more-mobile" mat-stroked-button [matMenuTriggerFor]="moreMenu">
+                <mat-icon>more_vert</mat-icon>
+                Más
+              </button>
+              <mat-menu #moreMenu="matMenu">
+                <button mat-menu-item routerLink="/g/{{ group.code }}/settings">
+                  <mat-icon>settings</mat-icon>
+                  <span>Configuración</span>
+                </button>
+                <button mat-menu-item (click)="copyInviteLink()">
+                  <mat-icon>link</mat-icon>
+                  <span>Copiar enlace de invitación</span>
+                </button>
+              </mat-menu>
+            </ng-container>
           </div>
-          <div class="quick-actions" style="margin-top: 16px;">
+          <div class="quick-actions qf-row">
             <button mat-stroked-button routerLink="/dashboard">
               <mat-icon>home</mat-icon>
               Volver al inicio
@@ -67,15 +85,45 @@ import { AuthService } from '../../../core/services/auth.service';
     }
 
     .actions {
-      display: flex;
-      gap: 16px;
       margin-top: 16px;
     }
 
+    .actions button mat-icon {
+      margin-right: 4px;
+      vertical-align: middle;
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+
+    .actions-more-mobile {
+      display: none;
+    }
+
+    @media (max-width: 600px) {
+      .actions-more-desktop {
+        display: none !important;
+      }
+
+      .actions-more-mobile {
+        display: inline-flex !important;
+      }
+
+      .actions button {
+        min-height: 44px;
+      }
+    }
+
     .quick-actions {
-      display: flex;
+      margin-top: 16px;
       gap: 8px;
-      flex-wrap: wrap;
+    }
+
+    @media (max-width: 600px) {
+      .quick-actions button {
+        min-height: 44px;
+        width: 100%;
+      }
     }
 
     .loading, .error {

@@ -25,6 +25,7 @@ body {
   font-family: Roboto, "Helvetica Neue", sans-serif;
   background: var(--qf-bg);
   color: var(--qf-text-on-dark);
+  overflow-x: hidden;
 }
 
 /* Background pattern (SVG) */
@@ -51,6 +52,30 @@ body {
   border: 1px solid rgba(0, 0, 0, 0.06);
   box-shadow: var(--qf-shadow-soft);
   padding: clamp(20px, 4vw, 32px);
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+@media (max-width: 600px) {
+  .qf-surface {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .qf-page {
+    padding: 16px;
+  }
+
+  .qf-page.container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  /* Touch targets mínimos en móvil */
+  .qf-actions button.mat-mdc-button,
+  .qf-actions button.mat-mdc-raised-button {
+    min-height: 44px;
+  }
 }
 
 .qf-surface--soft {
@@ -77,6 +102,40 @@ body {
   background: var(--qf-border-on-dark);
   margin: 16px 0;
   border: none;
+}
+
+/* ========== RESPONSIVE UTILITIES ========== */
+.qf-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.qf-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.qf-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+@media (max-width: 600px) {
+  .qf-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .qf-actions button {
+    min-height: 44px;
+    width: 100%;
+  }
 }
 
 /* ========== MATERIAL BUTTON OVERRIDES (use with mat-raised/outlined) ========== */
@@ -147,9 +206,22 @@ body {
 
 /* ========== LEGACY / SHARED ========== */
 .container {
-  max-width: 1200px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 16px;
+  box-sizing: border-box;
+}
+
+@media (min-width: 601px) {
+  .container {
+    padding: 24px;
+  }
+}
+
+@media (min-width: 960px) {
+  .container {
+    padding: 32px;
+  }
 }
 
 /* Slots: mapped to palette (success, warning, primary) — keep contrast safe */
@@ -166,4 +238,11 @@ body {
 .slot-red {
   background-color: var(--qf-primary) !important;
   color: white;
+}
+
+/* Evitar overflow en contenedores de página */
+.qf-page.container,
+mat-sidenav-content .container {
+  overflow-x: hidden;
+  min-width: 0;
 }

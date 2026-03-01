@@ -85,23 +85,40 @@ import { minToHhmm } from '@domain/index';
 
     .slots-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
       gap: 16px;
       margin-top: 16px;
     }
 
+    @media (max-width: 600px) {
+      .slots-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+    }
+
     .slot-card {
       min-height: 120px;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     .slot-header {
       display: flex;
       justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
       margin-bottom: 8px;
     }
 
     .slot-info {
       margin-top: 8px;
+    }
+
+    .slot-info mat-chip-set {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
     }
   `]
 })

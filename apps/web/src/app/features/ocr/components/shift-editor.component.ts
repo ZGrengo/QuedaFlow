@@ -9,6 +9,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { DetectedShift } from '@domain/index';
 import { minToHhmm, hhmmToMin } from '@domain/index';
+import { TimeInputComponent } from '../../../shared/time-input';
 
 @Component({
   selector: 'app-shift-editor',
@@ -21,33 +22,40 @@ import { minToHhmm, hhmmToMin } from '@domain/index';
     MatDatepickerModule,
     MatNativeDateModule,
     MatButtonModule,
-    MatIconModule
+    MatIconModule,
+    TimeInputComponent
   ],
   template: `
     <div class="shift-editor" [formGroup]="shiftForm">
-      <mat-form-field appearance="outline" class="date-field">
-        <mat-label>Fecha</mat-label>
-        <input matInput [matDatepicker]="picker" formControlName="date" [min]="minDate" [max]="maxDate">
-        <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
-        <mat-datepicker #picker></mat-datepicker>
-      </mat-form-field>
+      <div class="shift-editor-fields">
+        <mat-form-field appearance="outline" class="date-field">
+          <mat-label>Fecha</mat-label>
+          <input matInput [matDatepicker]="picker" formControlName="date" [min]="minDate" [max]="maxDate">
+          <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+          <mat-datepicker #picker></mat-datepicker>
+        </mat-form-field>
 
-      <mat-form-field appearance="outline" class="time-field">
-        <mat-label>Inicio</mat-label>
-        <input matInput formControlName="startTime" placeholder="HH:MM">
-      </mat-form-field>
+        <div class="time-row">
+          <qf-time-input
+            label="Inicio"
+            [control]="$any(shiftForm.get('startTime'))"
+            [required]="true"
+            helper="HH:MM">
+          </qf-time-input>
+          <qf-time-input
+            label="Fin"
+            [control]="$any(shiftForm.get('endTime'))"
+            [required]="true"
+            helper="HH:MM (00:00 = medianoche)">
+          </qf-time-input>
+        </div>
 
-      <mat-form-field appearance="outline" class="time-field">
-        <mat-label>Fin</mat-label>
-        <input matInput formControlName="endTime" placeholder="HH:MM">
-      </mat-form-field>
-
-      <div class="notes" *ngIf="shiftForm.get('crossesMidnight')?.value">
-        <mat-icon>info</mat-icon>
-        <span>Este turno cruza medianoche</span>
+        <div class="notes" *ngIf="shiftForm.get('crossesMidnight')?.value">
+          <mat-icon>info</mat-icon>
+          <span>Este turno cruza medianoche (se dividirá al guardar)</span>
+        </div>
       </div>
-
-      <button mat-icon-button color="warn" type="button" (click)="onDelete()" class="delete-btn">
+      <button mat-icon-button color="warn" type="button" (click)="onDelete()" class="delete-btn" aria-label="Eliminar turno">
         <mat-icon>delete</mat-icon>
       </button>
     </div>
@@ -62,15 +70,35 @@ import { minToHhmm, hhmmToMin } from '@domain/index';
       border-radius: 4px;
       background: #fafafa;
       margin-bottom: 8px;
+      box-sizing: border-box;
+      min-width: 0;
+    }
+
+    .shift-editor-fields {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-start;
     }
 
     .date-field {
       flex: 1;
-      min-width: 140px;
+      min-width: 120px;
+    }
+
+    .time-row {
+      display: flex;
+      gap: 12px;
+      flex: 1;
+      min-width: 0;
     }
 
     .time-field {
-      width: 100px;
+      min-width: 80px;
+      flex: 1;
+      max-width: 120px;
     }
 
     .notes {
@@ -79,18 +107,61 @@ import { minToHhmm, hhmmToMin } from '@domain/index';
       gap: 4px;
       color: #666;
       font-size: 0.875rem;
-      padding: 8px;
-      flex: 1;
+      padding: 8px 0;
+      width: 100%;
     }
 
     .notes mat-icon {
       font-size: 18px;
       width: 18px;
       height: 18px;
+      flex-shrink: 0;
     }
 
     .delete-btn {
-      margin-top: 8px;
+      flex-shrink: 0;
+      margin-top: 0;
+    }
+
+    @media (max-width: 600px) {
+      .shift-editor {
+        flex-wrap: wrap;
+        padding: 12px;
+      }
+
+      .shift-editor-fields {
+        flex: 1 1 100%;
+        flex-direction: column;
+      }
+
+      .date-field {
+        width: 100%;
+        min-width: 0;
+      }
+
+      .time-row {
+        width: 100%;
+        max-width: none;
+      }
+
+      .time-field {
+        flex: 1;
+        min-width: 0;
+        max-width: none;
+      }
+
+      .delete-btn {
+        position: absolute;
+        top: 4px;
+        right: 8px;
+        min-width: 44px;
+        min-height: 44px;
+      }
+
+      .shift-editor {
+        position: relative;
+        padding-top: 44px;
+      }
     }
   `]
 })
@@ -106,8 +177,8 @@ export class ShiftEditorComponent implements OnInit {
   constructor(private fb: FormBuilder) {
     this.shiftForm = this.fb.group({
       date: ['', Validators.required],
-      startTime: ['', [Validators.required, Validators.pattern(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/)]],
-      endTime: ['', [Validators.required, Validators.pattern(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/)]],
+      startTime: ['', Validators.required],
+      endTime: ['', Validators.required],
       crossesMidnight: [false]
     });
 

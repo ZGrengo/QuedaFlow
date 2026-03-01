@@ -22,6 +22,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { AvailabilityBlock } from '@domain/index';
 import { minToHhmm, hhmmToMin, timeRangesOverlap } from '@domain/index';
 import { formatDateDDMMYYYY } from '../../../core/utils/date-format';
+import { TimeInputComponent } from '../../../shared/time-input';
 
 @Component({
   selector: 'app-blocks-manager',
@@ -41,7 +42,8 @@ import { formatDateDDMMYYYY } from '../../../core/utils/date-format';
     MatChipsModule,
     MatRadioModule,
     MatDialogModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    TimeInputComponent
   ],
   template: `
     <div class="qf-page container">
@@ -69,9 +71,9 @@ import { formatDateDDMMYYYY } from '../../../core/utils/date-format';
               <mat-form-field appearance="outline">
                 <mat-label>Tipo</mat-label>
                 <mat-select formControlName="type" required>
-                  <mat-option value="WORK">Trabajo (horas ocupadas)</mat-option>
-                  <mat-option value="UNAVAILABLE">No disponible (reuniones, citas, etc.)</mat-option>
-                  <mat-option value="PREFERRED">Preferido (horas libres que prefieres)</mat-option>
+                  <mat-option value="WORK">Trabajo</mat-option>
+                  <mat-option value="UNAVAILABLE">Ocupado</mat-option>
+                  <mat-option value="PREFERRED">Preferido</mat-option>
                 </mat-select>
               </mat-form-field>
 
@@ -81,8 +83,8 @@ import { formatDateDDMMYYYY } from '../../../core/utils/date-format';
                   [min]="minDate" [max]="maxDate">
                 <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
                 <mat-datepicker #picker [startAt]="minDate"></mat-datepicker>
-                <mat-hint *ngIf="planningRangeHint">{{ planningRangeHint }}</mat-hint>
               </mat-form-field>
+              <p *ngIf="blockForm.get('mode')?.value === 'single' && planningRangeHint" class="planning-range-hint">{{ planningRangeHint }}</p>
 
               <ng-container *ngIf="blockForm.get('mode')?.value === 'fixed'">
                 <mat-form-field appearance="outline">
@@ -101,26 +103,31 @@ import { formatDateDDMMYYYY } from '../../../core/utils/date-format';
             </div>
 
             <div class="form-row">
-              <mat-form-field appearance="outline">
-                <mat-label>Hora inicio (HH:MM)</mat-label>
-                <input matInput formControlName="start_time" placeholder="09:00" required>
-              </mat-form-field>
-
-              <mat-form-field appearance="outline">
-                <mat-label>Hora fin (HH:MM)</mat-label>
-                <input matInput formControlName="end_time" placeholder="17:00" required>
-              </mat-form-field>
+              <qf-time-input
+                label="Hora inicio"
+                [control]="$any(blockForm.get('start_time'))"
+                [required]="true"
+                helper="Ej: 09:00 o 17:30">
+              </qf-time-input>
+              <qf-time-input
+                label="Hora fin"
+                [control]="$any(blockForm.get('end_time'))"
+                [required]="true"
+                helper="Ej: 17:00 o 23:30">
+              </qf-time-input>
             </div>
+            <p *ngIf="blockForm.hasError('sameStartEnd')" class="time-hint time-hint-error">La hora fin debe ser distinta del inicio.</p>
+            <p *ngIf="crossesMidnightHint" class="time-hint time-hint-info">Este bloque cruza medianoche (inicio &gt; fin).</p>
 
             <p *ngIf="blockForm.get('mode')?.value === 'fixed'" class="fixed-hint">
               Se crearán bloques para todos los días entre «Día desde» y «Día hasta» dentro del rango de planificación del grupo.
             </p>
 
             <div *ngIf="preferredCount >= 3 && blockForm.get('type')?.value === 'PREFERRED'" class="warning">
-              Máximo 3 bloques PREFERRED permitidos
+              Máximo 3 bloques Preferido permitidos
             </div>
 
-            <div class="form-actions">
+            <div class="form-actions qf-actions">
               <button mat-raised-button class="qf-btn-primary" type="submit" [disabled]="!isFormValid() || loading">
                 {{ blockForm.get('mode')?.value === 'fixed' ? 'Añadir horario fijo' : 'Añadir Bloque' }}
               </button>
@@ -144,7 +151,7 @@ import { formatDateDDMMYYYY } from '../../../core/utils/date-format';
         <mat-card-content>
           <div *ngFor="let block of myBlocks" class="block-item">
             <mat-chip-set>
-              <mat-chip>{{ block.type }}</mat-chip>
+              <mat-chip [class]="'chip-type chip-' + block.type.toLowerCase()">{{ blockTypeLabel(block.type) }}</mat-chip>
               <mat-chip>{{ block.date | date:'dd/MM/yyyy' }}</mat-chip>
               <mat-chip>{{ minToHhmm(block.start_min) }} - {{ minToHhmm(block.end_min) }}</mat-chip>
             </mat-chip-set>
@@ -187,20 +194,31 @@ import { formatDateDDMMYYYY } from '../../../core/utils/date-format';
     }
 
     .form-row {
-      display: flex;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
       gap: 16px;
       margin-bottom: 16px;
     }
 
     .form-row mat-form-field {
-      flex: 1;
+      min-width: 0;
+    }
+
+    .planning-range-hint {
+      margin: -8px 0 8px 0;
+      font-size: 0.75rem;
+      color: var(--qf-text-muted);
+      word-break: break-word;
+      grid-column: 1 / -1;
+    }
+
+    @media (max-width: 600px) {
+      .form-row {
+        grid-template-columns: 1fr;
+      }
     }
 
     .form-actions {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      flex-wrap: wrap;
       margin-top: 8px;
     }
 
@@ -236,8 +254,33 @@ import { formatDateDDMMYYYY } from '../../../core/utils/date-format';
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
       padding: 8px 0;
       border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .block-item mat-chip-set {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .chip-type {
+      font-weight: 500;
+    }
+
+    .chip-type.chip-work,
+    .chip-type.chip-unavailable {
+      background-color: var(--qf-secondary) !important;
+      color: #fff !important;
+    }
+
+    .chip-type.chip-preferred {
+      background-color: var(--qf-success) !important;
+      color: #1a1a1e !important;
     }
 
     .empty {
@@ -250,6 +293,13 @@ import { formatDateDDMMYYYY } from '../../../core/utils/date-format';
       color: var(--qf-warning);
       margin-bottom: 16px;
     }
+
+    .time-hint {
+      margin: -8px 0 12px 0;
+      font-size: 0.8rem;
+    }
+    .time-hint-error { color: var(--qf-primary); }
+    .time-hint-info { color: var(--qf-text-muted); }
   `]
 })
 export class BlocksManagerComponent implements OnInit {
@@ -282,9 +332,29 @@ export class BlocksManagerComponent implements OnInit {
       date: [new Date()],
       day_from: [1],
       day_to: [5],
-      start_time: ['09:00', [Validators.required, Validators.pattern(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/)]],
-      end_time: ['17:00', [Validators.required, Validators.pattern(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/)]]
-    });
+      start_time: ['09:00'],
+      end_time: ['17:00'],
+    }, { validators: this.sameStartEndValidator });
+  }
+
+  sameStartEndValidator(g: FormGroup): { sameStartEnd: boolean } | null {
+    const s = g.get('start_time')?.value;
+    const e = g.get('end_time')?.value;
+    if (!s || !e || !/^\d{2}:\d{2}$/.test(s) || !/^\d{2}:\d{2}$/.test(e)) return null;
+    return s === e ? { sameStartEnd: true } : null;
+  }
+
+  get crossesMidnightHint(): boolean {
+    const s = this.blockForm.get('start_time')?.value;
+    const e = this.blockForm.get('end_time')?.value;
+    if (!s || !e || !/^\d{2}:\d{2}$/.test(s) || !/^\d{2}:\d{2}$/.test(e)) return false;
+    try {
+      const startMin = hhmmToMin(s);
+      const endMin = e === '00:00' ? 1440 : hhmmToMin(e);
+      return endMin < startMin;
+    } catch {
+      return false;
+    }
   }
 
   readonly weekdayOptions: { value: number; label: string }[] = [
@@ -308,6 +378,11 @@ export class BlocksManagerComponent implements OnInit {
       return form.get('day_from')?.value != null && form.get('day_to')?.value != null;
     }
     return false;
+  }
+
+  blockTypeLabel(type: string): string {
+    const labels: Record<string, string> = { WORK: 'Trabajo', UNAVAILABLE: 'Ocupado', PREFERRED: 'Preferido' };
+    return labels[type] ?? type;
   }
 
   ngOnInit() {
