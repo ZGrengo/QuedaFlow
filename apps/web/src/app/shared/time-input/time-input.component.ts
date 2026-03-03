@@ -42,6 +42,7 @@ import {
         matSuffix
         class="time-picker-trigger"
         aria-label="Abrir selector de hora"
+        (click)="openNativePicker()"
       >
         <input
           #nativeTimeInput
@@ -69,11 +70,11 @@ import {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 40px;
-      height: 40px;
+      width: 36px;
+      height: 36px;
+      margin-left: -42px;
       cursor: pointer;
       border-radius: 50%;
-      overflow: visible;
     }
 
     .time-picker-trigger:hover .time-picker-icon {
@@ -88,18 +89,21 @@ import {
     }
 
     .time-picker-icon mat-icon {
-      font-size: 24px;
-      width: 24px;
-      height: 24px;
+      font-size: 22px;
+      width: 22px;
+      height: 22px;
+      color: #707070;
+      opacity: 0.9;
     }
 
     .native-time-overlay {
       position: absolute;
-      inset: -6px;
-      width: auto;
-      height: auto;
-      min-width: 52px;
-      min-height: 52px;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      min-width: 44px;
+      min-height: 44px;
       margin: 0;
       padding: 0;
       border: none;
@@ -107,7 +111,6 @@ import {
       cursor: pointer;
       opacity: 0;
       font-size: 16px;
-      box-sizing: content-box;
     }
 
     .qf-time-input {
@@ -206,6 +209,20 @@ export class TimeInputComponent implements OnInit, OnDestroy, AfterViewInit {
     if (v) {
       this.control?.setValue(v, { emitEvent: true });
       this.displayValue = v;
+    }
+  }
+
+  /** Abre el selector nativo de hora al hacer clic en el icono */
+  openNativePicker(): void {
+    const el = this.nativeTimeInput?.nativeElement;
+    if (!el) return;
+
+    const anyEl = el as any;
+    if (typeof anyEl.showPicker === 'function') {
+      anyEl.showPicker();
+    } else {
+      el.focus();
+      el.click();
     }
   }
 }
