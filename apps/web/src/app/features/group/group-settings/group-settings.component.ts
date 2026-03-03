@@ -95,13 +95,26 @@ const DOW_LABELS: Record<number, string> = {
                 <h3>Otros ajustes</h3>
                 <div class="form-row">
                   <mat-form-field appearance="outline">
-                    <mat-label>Buffer antes de trabajo (min)</mat-label>
+                    <mat-label>Buffer (mins)</mat-label>
                     <input matInput type="number" formControlName="buffer_before_work_min" min="0" max="120">
-                    <mat-hint>Minutos de margen antes del inicio del turno</mat-hint>
+                    <mat-hint class="buffer-hint">
+                      <mat-icon class="buffer-hint-icon">info</mat-icon>
+                      <span>Margen para el transporte</span>
+                    </mat-hint>
                   </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>Umbral amarillo (0-1)</mat-label>
                     <input matInput type="number" formControlName="yellow_threshold" min="0" max="1" step="0.01">
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Mínimo de personas</mat-label>
+                    <input
+                      matInput
+                      type="number"
+                      formControlName="target_people"
+                      min="1"
+                    >
+                    <mat-hint>Personas mínimas necesarias para realizar la actividad</mat-hint>
                   </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>Duración mínima reunión (min)</mat-label>
@@ -174,6 +187,9 @@ const DOW_LABELS: Record<number, string> = {
     .form-row { display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
     .form-row mat-form-field { flex: 1; min-width: 140px; }
     .blocked-windows { margin-top: 24px; }
+    .blocked-windows mat-card-content .form-row:first-child {
+      margin-top: 12px;
+    }
     .windows-list { margin-top: 16px; }
     .window-item {
       display: flex;
@@ -184,6 +200,23 @@ const DOW_LABELS: Record<number, string> = {
     }
     .window-item .dow { color: var(--qf-text-muted); font-size: 0.875rem; }
     .empty { padding: 16px; color: var(--qf-text-muted); }
+
+    .buffer-hint {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      line-height: 1.2;
+      margin-top: 4px;
+      padding-left: 4px;
+    }
+
+    .buffer-hint-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      color: var(--qf-primary);
+      flex-shrink: 0;
+    }
   `]
 })
 export class GroupSettingsComponent implements OnInit {
@@ -212,6 +245,7 @@ export class GroupSettingsComponent implements OnInit {
       planning_end_date: ['', Validators.required],
       buffer_before_work_min: [20, [Validators.required, Validators.min(0), Validators.max(120)]],
       yellow_threshold: [0.75, [Validators.required, Validators.min(0), Validators.max(1)]],
+      target_people: [null, [Validators.min(1)]],
       min_meeting_duration_min: [60, [Validators.required, Validators.min(15), Validators.max(480)]]
     }, { validators: this.planningRangeValidator });
 
@@ -251,6 +285,7 @@ export class GroupSettingsComponent implements OnInit {
           planning_end_date: group.planning_end_date,
           buffer_before_work_min: group.buffer_before_work_min,
           yellow_threshold: group.yellow_threshold,
+          target_people: group.target_people,
           min_meeting_duration_min: group.min_meeting_duration_min
         });
         this.loadBlockedWindows();

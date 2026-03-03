@@ -1,11 +1,11 @@
 import { Injectable } from '@angular/core';
-import { Observable, combineLatest } from 'rxjs';
-import { map, switchMap } from 'rxjs/operators';
-import { GroupService } from './group.service';
+import { Observable, combineLatest, from } from 'rxjs';
+import { map, switchMap, tap } from 'rxjs/operators';
+import { GroupService, Group } from './group.service';
 import { GroupMember as DomainGroupMember } from '@domain/index';
 import { BlocksService } from './blocks.service';
-import { Group } from './group.service';
 import { computeSlots, rankSlots, ComputedSlot, AvailabilityBlock, BlockedWindow } from '@domain/index';
+import { getSupabaseClient } from '../config/supabase.config';
 
 @Injectable({
   providedIn: 'root'
@@ -71,8 +71,85 @@ export class PlannerService {
   }
 
   getTopSlots(groupCode: string, topN: number = 10): Observable<ComputedSlot[]> {
-    return this.computeGroupSlots(groupCode).pipe(
-      map(slots => rankSlots(slots, topN))
+    return this.groupService.getGroup(groupCode).pipe(
+      switchMap(group =>
+        combineLatest([
+          this.computeGroupSlots(groupCode),
+          this.groupService.getGroupMembers(group.id)
+        ]).pipe(
+          switchMap(([slots, members]) => {
+            const ranked = rankSlots(slots, topN);
+            const shouldNotify =
+              group.target_people != null &&
+              group.notification_sent_at == null &&
+              ranked.some(s => (s.available_count ?? s.available_members.length) >= (group.target_people as number));
+
+            if (!shouldNotify) {
+              return from([ranked]);
+            }
+
+            const top3 = ranked.slice(0, 3);
+            const supabase = getSupabaseClient();
+
+            return from(
+              supabase.functions.invoke('notify-top-slots', {
+                body: {
+                  groupId: group.id,
+                  targetPeople: group.target_people,
+                  slots: top3
+                }
+              })
+            ).pipe(
+              tap(({ error }) => {
+                if (error) {
+                  // No romper la UI si la notificación falla
+                  console.error('Error al notificar top slots', error);
+                }
+              }),
+              map(() => ranked)
+            );
+          })
+        )
+      )
+    );
+  }
+
+  /**
+   * DEBUG: fuerza el cálculo de slots y el intento de envío de email
+   * usando la edge function `notify-top-slots`, independientemente de
+   * si se mostrarán o no en la UI. Útil para probar el proveedor de email.
+   */
+  debugNotifyTopSlots(groupCode: string): Observable<void> {
+    return this.groupService.getGroup(groupCode).pipe(
+      switchMap(group =>
+        combineLatest([
+          this.computeGroupSlots(groupCode),
+          this.groupService.getGroupMembers(group.id)
+        ]).pipe(
+          map(([slots]) => rankSlots(slots, 3)),
+          switchMap((top3) => {
+            const supabase = getSupabaseClient();
+            return from(
+              supabase.functions.invoke('notify-top-slots', {
+                body: {
+                  groupId: group.id,
+                  targetPeople: group.target_people ?? 0,
+                  slots: top3
+                }
+              })
+            ).pipe(
+              tap(({ error }) => {
+                if (error) {
+                  console.error('[Planner debug] Error al invocar notify-top-slots', error);
+                } else {
+                  console.log('[Planner debug] notify-top-slots invocada correctamente');
+                }
+              }),
+              map(() => void 0)
+            );
+          })
+        )
+      )
     );
   }
 }

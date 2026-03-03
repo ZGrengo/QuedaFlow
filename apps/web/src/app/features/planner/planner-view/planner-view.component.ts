@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { PlannerService } from '../../../core/services/planner.service';
+import { NotificationService } from '../../../core/services/notification.service';
 import { ComputedSlot } from '@domain/index';
 import { minToHhmm } from '@domain/index';
 
@@ -36,6 +37,18 @@ import { minToHhmm } from '@domain/index';
           <mat-card-title>Mejores Huecos Disponibles</mat-card-title>
         </mat-card-header>
         <mat-card-content>
+          <div class="planner-actions">
+            <button
+              mat-stroked-button
+              color="primary"
+              type="button"
+              (click)="onDebugEmail()"
+              [disabled]="debugSending"
+            >
+              <mat-icon>email</mat-icon>
+              Probar envío de email
+            </button>
+          </div>
           <div *ngIf="loading" class="loading">Calculando huecos...</div>
           <div *ngIf="error" class="error">{{ error }}</div>
 
@@ -332,11 +345,13 @@ export class PlannerViewComponent implements OnInit {
   error = '';
   minToHhmm = minToHhmm;
   memberCount = 0;
+  debugSending = false;
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private plannerService: PlannerService
+    private plannerService: PlannerService,
+    private notification: NotificationService
   ) { }
 
   formatSlotDate(dateISO: string): string {
@@ -367,6 +382,23 @@ export class PlannerViewComponent implements OnInit {
         this.error = 'Error al calcular huecos';
         this.loading = false;
         console.error(err);
+      }
+    });
+  }
+
+  onDebugEmail() {
+    if (!this.code || this.debugSending) return;
+    this.debugSending = true;
+    this.notification.info('Intentando enviar email de notificación (si aplica)...', 2500);
+    this.plannerService.debugNotifyTopSlots(this.code).subscribe({
+      next: () => {
+        this.debugSending = false;
+        this.notification.success('Llamada a la función de notificación completada. Revisa tu correo / logs.');
+      },
+      error: (err) => {
+        this.debugSending = false;
+        console.error('[Planner debug] Error', err);
+        this.notification.error('Error al probar el envío de email. Revisa la consola y los logs de Supabase.');
       }
     });
   }

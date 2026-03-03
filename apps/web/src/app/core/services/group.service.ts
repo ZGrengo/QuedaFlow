@@ -14,6 +14,7 @@ export interface Group {
   planning_start_date: string;
   planning_end_date: string;
   min_meeting_duration_min: number;
+  notification_sent_at: string | null;
   created_at: string;
 }
 

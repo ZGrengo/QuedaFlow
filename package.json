@@ -13,7 +13,7 @@
     "test:watch": "cd packages/domain && npm run test:watch"
   },
   "devDependencies": {
-    "@types/node": "^20.10.0"
+    "@types/node": "^20.10.0",
+    "supabase": "^2.76.16"
   }
 }
-

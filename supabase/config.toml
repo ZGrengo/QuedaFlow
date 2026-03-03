@@ -1,8 +1,7 @@
 # Supabase configuration file
 # This file is used by Supabase CLI
 
-[project]
-id = "your-project-id"
+project_id = "ehtienppxcycyaxlyjln"
 
 [api]
 enabled = true
