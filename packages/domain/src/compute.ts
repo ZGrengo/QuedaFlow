@@ -136,7 +136,9 @@ export function computeSlots(params: ComputeSlotsParams): ComputedSlot[] {
         }
       }
 
-      const pctAvailable = availableMembers.length / members.length;
+      const availableCount = availableMembers.length;
+      const totalMembers = members.length;
+      const pctAvailable = availableCount / totalMembers;
       const color = getSlotColor(pctAvailable, yellow_threshold);
 
       slots.push({
@@ -146,7 +148,9 @@ export function computeSlots(params: ComputeSlotsParams): ComputedSlot[] {
         pct_available: pctAvailable,
         preferred_count: preferredCount,
         color,
-        available_members: availableMembers
+        available_members: availableMembers,
+        available_count: availableCount,
+        total_members: totalMembers
       });
     }
   }
@@ -169,24 +173,54 @@ function getSlotColor(pctAvailable: number, yellowThreshold: number): 'green' | 
 
 /**
  * Ranks slots and returns top N
- * Priority: green > yellow > red, then by preferred_count, then by pct_available
+ *
+ * Score base recomendado para planners:
+ *   score = pct_available * 100 + preferred_count * 5
+ *
+ * Empates:
+ *  - mayor pct_available
+ *  - luego mayor preferred_count
+ *  - luego horario más temprano (date + start_min)
+ *
+ * Marca exactamente un slot como `is_top = true` (el primero del ranking).
  */
 export function rankSlots(slots: ComputedSlot[], topN: number = 10): ComputedSlot[] {
-  const sorted = [...slots].sort((a, b) => {
-    // Color priority: green (3) > yellow (2) > red (1)
-    const colorPriority = { green: 3, yellow: 2, red: 1 };
-    const colorDiff = colorPriority[b.color] - colorPriority[a.color];
-    if (colorDiff !== 0) return colorDiff;
+  if (slots.length === 0) return [];
 
-    // Then by preferred_count
+  const scored = slots.map(slot => {
+    const score = slot.pct_available * 100 + slot.preferred_count * 5;
+    return { ...slot, score };
+  });
+
+  scored.sort((a, b) => {
+    // Score descendente
+    const scoreDiff = (b.score ?? 0) - (a.score ?? 0);
+    if (scoreDiff !== 0) return scoreDiff;
+
+    // Mayor disponibilidad
+    if (b.pct_available !== a.pct_available) {
+      return b.pct_available - a.pct_available;
+    }
+
+    // Más preferidos
     if (b.preferred_count !== a.preferred_count) {
       return b.preferred_count - a.preferred_count;
     }
 
-    // Then by pct_available
-    return b.pct_available - a.pct_available;
+    // Fecha más temprana
+    if (a.date !== b.date) {
+      return a.date.localeCompare(b.date);
+    }
+
+    // Hora de inicio más temprana
+    return a.start_min - b.start_min;
   });
 
-  return sorted.slice(0, topN);
+  // Marcar solo el primero como top
+  if (scored[0]) {
+    scored[0].is_top = true;
+  }
+
+  return scored.slice(0, topN);
 }
 

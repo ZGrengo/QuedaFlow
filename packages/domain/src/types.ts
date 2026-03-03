@@ -33,6 +33,15 @@ export interface ComputedSlot extends TimeBlock {
   preferred_count: number;
   color: 'green' | 'yellow' | 'red';
   available_members: string[]; // user_ids
+  /**
+   * Datos derivados para UI / reporting (opcionales para compatibilidad hacia atrás)
+   */
+  available_count?: number;
+  total_members?: number;
+  /** Marcador de ranking para planners: true solo en el mejor slot */
+  is_top?: boolean;
+  /** Score interno de ranking, útil para debugging o analytics */
+  score?: number;
 }
 
 export interface ComputeSlotsParams {
