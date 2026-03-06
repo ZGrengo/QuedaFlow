@@ -111,6 +111,8 @@ En Supabase Dashboard:
    - `009_rls_and_triggers_validations.sql`
    - `010_group_delete_policy.sql`
    - `011_limit_max_groups_per_user.sql`
+   - `012_group_notification_sent_at.sql`
+   - `013_grant_service_role_public_schema.sql`
 
 O usando Supabase CLI:
 
@@ -126,6 +128,24 @@ En Supabase Dashboard:
 3. Configura redirect URLs:
    - `http://localhost:4200/**`
    - Tu dominio de producción
+
+### 4. Edge Function notify-top-slots (emails con Brevo)
+
+La función envía emails cuando se alcanza el mínimo de personas disponibles. Usa [Brevo](https://www.brevo.com/) (antes Sendinblue).
+
+1. Crea una cuenta en [brevo.com](https://www.brevo.com/) (plan gratuito: 300 emails/día)
+2. Verifica tu email remitente en Brevo (Settings → Senders)
+3. Obtén tu API key en Settings → SMTP & API → API Keys
+4. Configura los secrets en Supabase:
+
+```bash
+supabase secrets set BREVO_API_KEY=tu_api_key
+supabase secrets set BREVO_SENDER_EMAIL=tu_email@gmail.com
+```
+
+O en el Dashboard: Project Settings → Edge Functions → Secrets.
+
+> **Nota**: Con un Gmail verificado la entrega puede ser inestable (spam). Para producción, verifica un dominio propio en Brevo y usa ese dominio como remitente.
 
 ## Diseño de RLS (Row Level Security)
 

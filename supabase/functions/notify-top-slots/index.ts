@@ -1,11 +1,19 @@
+// @ts-nocheck
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.48.0';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': 'http://localhost:4200', // en prod: tu dominio
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS'
-};
+function buildCorsHeaders(req: Request) {
+  // Permitir dev en localhost y facilitar debugging.
+  // Si prefieres un allowlist estricto, cambia "*" por tu dominio.
+  const origin = req.headers.get('Origin') ?? '*';
+  return {
+    'Access-Control-Allow-Origin': origin,
+    'Vary': 'Origin',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Max-Age': '86400'
+  };
+}
 
 interface SlotPayload {
   date: string;
@@ -24,9 +32,11 @@ interface Payload {
 }
 
 serve(async (req) => {
+  const corsHeaders = buildCorsHeaders(req);
+
   // Preflight CORS
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response(null, { status: 204, headers: corsHeaders });
   }
 
   try {
@@ -46,7 +56,7 @@ serve(async (req) => {
       }
     });
 
-    const authHeader = req.headers.get('Authorization');
+    const authHeader = req.headers.get('Authorization') ?? req.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Missing auth token' }), {
         status: 401,
@@ -70,7 +80,7 @@ serve(async (req) => {
     const body = (await req.json()) as Payload;
     const { groupId, targetPeople, slots } = body;
 
-    if (!groupId || !targetPeople || !slots?.length) {
+    if (!groupId || targetPeople == null || !slots?.length) {
       return new Response(JSON.stringify({ error: 'Invalid payload' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -81,10 +91,17 @@ serve(async (req) => {
       .from('groups')
       .select('*')
       .eq('id', groupId)
-      .single();
+      .maybeSingle();
 
-    if (groupError || !group) {
-      return new Response(JSON.stringify({ error: 'Group not found' }), {
+    if (groupError) {
+      console.error('Group fetch error', groupError.message, 'groupId', groupId);
+      return new Response(
+        JSON.stringify({ error: 'Group not found', detail: groupError.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    if (!group) {
+      return new Response(JSON.stringify({ error: 'Group not found', detail: 'No row for id: ' + groupId }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
@@ -203,31 +220,38 @@ serve(async (req) => {
       </div>
     `;
 
-    const resendApiKey = Deno.env.get('RESEND_API_KEY');
-    if (!resendApiKey) {
-      return new Response(JSON.stringify({ error: 'Missing RESEND_API_KEY' }), {
+    const brevoApiKey = Deno.env.get('BREVO_API_KEY');
+    const brevoSenderEmail = Deno.env.get('BREVO_SENDER_EMAIL') ?? '';
+    if (!brevoApiKey) {
+      return new Response(JSON.stringify({ error: 'Missing BREVO_API_KEY' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    if (!brevoSenderEmail) {
+      return new Response(JSON.stringify({ error: 'Missing BREVO_SENDER_EMAIL' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    const emailRes = await fetch('https://api.resend.com/emails', {
+    const emailRes = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${resendApiKey}`
+        'api-key': brevoApiKey
       },
       body: JSON.stringify({
-        from: 'QuedaFlow <notificaciones@quedaflow.app>',
-        to: recipientEmails,
+        sender: { name: 'QuedaFlow', email: brevoSenderEmail },
+        to: recipientEmails.map((email) => ({ email })),
         subject,
-        html
+        htmlContent: html
       })
     });
 
     if (!emailRes.ok) {
       const text = await emailRes.text();
-      console.error('Resend error', text);
+      console.error('Brevo error', text);
       return new Response(JSON.stringify({ error: 'Error sending email' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

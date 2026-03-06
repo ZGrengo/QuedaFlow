@@ -41,3 +41,7 @@ enable_signup = true
 double_confirm_changes = true
 enable_confirmations = false
 
+# El gateway no soporta ES256; la función valida el JWT manualmente con getUser(jwt)
+[functions.notify-top-slots]
+verify_jwt = false
+

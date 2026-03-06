@@ -1,20 +1,112 @@
 import { Injectable } from '@angular/core';
-import { Observable, combineLatest, from } from 'rxjs';
-import { map, switchMap, tap } from 'rxjs/operators';
+import { Observable, combineLatest, defer, from, of } from 'rxjs';
+import { catchError, finalize, map, shareReplay, switchMap, tap } from 'rxjs/operators';
 import { GroupService, Group } from './group.service';
 import { GroupMember as DomainGroupMember } from '@domain/index';
 import { BlocksService } from './blocks.service';
 import { computeSlots, rankSlots, ComputedSlot, AvailabilityBlock, BlockedWindow } from '@domain/index';
 import { getSupabaseClient } from '../config/supabase.config';
+import { environment } from '../../../environments/environment';
+
+/** Extrae project ref de la URL de Supabase (ej. ehtienppxcycyaxlyjln) */
+function getProjectRef(): string {
+  const m = environment.supabaseUrl.match(/https?:\/\/([^.]+)\.supabase\.co/);
+  return m ? m[1] : '';
+}
+
+/** Lee el access_token desde localStorage (evita NavigatorLock) */
+function getTokenFromStorage(): string | null {
+  if (typeof localStorage === 'undefined') return null;
+  const ref = getProjectRef();
+  const keysToTry = ref ? [`sb-${ref}-auth-token`, 'sb-auth-token'] : ['sb-auth-token'];
+  for (const key of keysToTry) {
+    const token = parseTokenFromItem(localStorage.getItem(key));
+    if (token) return token;
+  }
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && (key.startsWith('sb-') && key.endsWith('-auth-token'))) {
+      const token = parseTokenFromItem(localStorage.getItem(key));
+      if (token) return token;
+    }
+  }
+  return null;
+}
+
+function parseTokenFromItem(raw: string | null): string | null {
+  if (!raw) return null;
+  try {
+    const data = JSON.parse(raw) as Record<string, unknown>;
+    const token =
+      (data['access_token'] as string) ??
+      (data['currentSession'] as { access_token?: string } | undefined)?.access_token ??
+      (data['session'] as { access_token?: string } | undefined)?.access_token;
+    return token && typeof token === 'string' ? token : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Obtiene el token solo desde localStorage (evita NavigatorLock).
+ * Reintenta un poco por si la auth acaba de escribir.
+ */
+async function getAccessToken(): Promise<string> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const token = getTokenFromStorage();
+    if (token) return token;
+    if (attempt < 2) await new Promise((r) => setTimeout(r, 400));
+  }
+  throw new Error('No hay sesión activa. Inicia sesión e inténtalo de nuevo.');
+}
+
+async function invokeNotifyTopSlotsFetch(payload: {
+  groupId: string;
+  targetPeople: number;
+  slots: ComputedSlot[];
+}): Promise<void> {
+  await new Promise((r) => setTimeout(r, 600));
+  const token = await getAccessToken();
+  const url = `${environment.supabaseUrl}/functions/v1/notify-top-slots`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      apikey: environment.supabaseAnonKey
+    },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as { error?: string; detail?: string };
+    const msg = err.detail ? `${err.error ?? res.status}: ${err.detail}` : (err.error ?? `HTTP ${res.status}`);
+    throw new Error(msg);
+  }
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class PlannerService {
+  private notifyInFlightByGroupId = new Map<string, Observable<void>>();
+
   constructor(
     private groupService: GroupService,
     private blocksService: BlocksService
   ) { }
+
+  private invokeNotifyTopSlots(payload: { groupId: string; targetPeople: number; slots: ComputedSlot[] }): Observable<void> {
+    const existing = this.notifyInFlightByGroupId.get(payload.groupId);
+    if (existing) return existing;
+
+    const request$ = defer(() => from(invokeNotifyTopSlotsFetch(payload))).pipe(
+      finalize(() => this.notifyInFlightByGroupId.delete(payload.groupId)),
+      shareReplay({ bufferSize: 1, refCount: true })
+    );
+
+    this.notifyInFlightByGroupId.set(payload.groupId, request$);
+    return request$;
+  }
 
   computeGroupSlots(groupCode: string): Observable<ComputedSlot[]> {
     return this.groupService.getGroup(groupCode).pipe(
@@ -89,24 +181,16 @@ export class PlannerService {
             }
 
             const top3 = ranked.slice(0, 3);
-            const supabase = getSupabaseClient();
-
-            return from(
-              supabase.functions.invoke('notify-top-slots', {
-                body: {
-                  groupId: group.id,
-                  targetPeople: group.target_people,
-                  slots: top3
-                }
+            return this.invokeNotifyTopSlots({
+              groupId: group.id,
+              targetPeople: group.target_people as number,
+              slots: top3
+            }).pipe(
+              map(() => ranked),
+              catchError((err) => {
+                console.error('Error al notificar top slots', err);
+                return of(ranked);
               })
-            ).pipe(
-              tap(({ error }) => {
-                if (error) {
-                  // No romper la UI si la notificación falla
-                  console.error('Error al notificar top slots', error);
-                }
-              }),
-              map(() => ranked)
             );
           })
         )
@@ -128,24 +212,13 @@ export class PlannerService {
         ]).pipe(
           map(([slots]) => rankSlots(slots, 3)),
           switchMap((top3) => {
-            const supabase = getSupabaseClient();
-            return from(
-              supabase.functions.invoke('notify-top-slots', {
-                body: {
-                  groupId: group.id,
-                  targetPeople: group.target_people ?? 0,
-                  slots: top3
-                }
-              })
-            ).pipe(
-              tap(({ error }) => {
-                if (error) {
-                  console.error('[Planner debug] Error al invocar notify-top-slots', error);
-                } else {
-                  console.log('[Planner debug] notify-top-slots invocada correctamente');
-                }
-              }),
-              map(() => void 0)
+            return this.invokeNotifyTopSlots({
+              groupId: group.id,
+              targetPeople: group.target_people ?? 1,
+              slots: top3
+            }).pipe(
+              tap(() => console.log('[Planner debug] notify-top-slots invocada correctamente')),
+              tap({ error: (err) => console.error('[Planner debug] Error al invocar notify-top-slots', err) })
             );
           })
         )
