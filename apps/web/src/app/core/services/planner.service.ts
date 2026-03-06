@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Observable, combineLatest, defer, from, of } from 'rxjs';
-import { catchError, finalize, map, shareReplay, switchMap, tap } from 'rxjs/operators';
+import { catchError, finalize, map, shareReplay, switchMap } from 'rxjs/operators';
 import { GroupService, Group } from './group.service';
 import { GroupMember as DomainGroupMember } from '@domain/index';
 import { BlocksService } from './blocks.service';
@@ -200,32 +200,5 @@ export class PlannerService {
     );
   }
 
-  /**
-   * DEBUG: fuerza el cálculo de slots y el intento de envío de email
-   * usando la edge function `notify-top-slots`, independientemente de
-   * si se mostrarán o no en la UI. Útil para probar el proveedor de email.
-   */
-  debugNotifyTopSlots(groupCode: string): Observable<void> {
-    return this.groupService.getGroup(groupCode).pipe(
-      switchMap(group =>
-        combineLatest([
-          this.computeGroupSlots(groupCode),
-          this.groupService.getGroupMembers(group.id)
-        ]).pipe(
-          map(([slots]) => rankSlots(slots, 3)),
-          switchMap((top3) => {
-            return this.invokeNotifyTopSlots({
-              groupId: group.id,
-              targetPeople: group.target_people ?? 1,
-              slots: top3
-            }).pipe(
-              tap(() => console.log('[Planner debug] notify-top-slots invocada correctamente')),
-              tap({ error: (err) => console.error('[Planner debug] Error al invocar notify-top-slots', err) })
-            );
-          })
-        )
-      )
-    );
-  }
 }
 

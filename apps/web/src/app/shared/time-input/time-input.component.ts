@@ -48,7 +48,7 @@ import {
           #nativeTimeInput
           type="time"
           [value]="nativeTimeValue"
-          [step]="stepSeconds"
+          step="60"
           class="native-time-overlay"
           (change)="onNativeChange($event)"
         />
@@ -115,6 +115,14 @@ import {
 
     .qf-time-input {
       display: block;
+    }
+
+    /* En desktop, el popup nativo de Chrome muestra espacio vacío en la columna de minutos.
+       Ocultamos el trigger del picker; el usuario escribe la hora en el campo de texto. */
+    @media (min-width: 768px) {
+      .time-picker-trigger {
+        display: none;
+      }
     }
   `]
 })
