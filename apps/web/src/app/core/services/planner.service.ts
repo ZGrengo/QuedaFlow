@@ -146,6 +146,8 @@ export class PlannerService {
           }));
 
           // Compute slots (solo dentro del rango planning)
+          // slotSize = duración mínima de reunión del grupo (ej. 60 min) para que cada slot sea bookable
+          const slotSize = group.min_meeting_duration_min ?? 30;
           const slots = computeSlots({
             members: domainMembers,
             availability_blocks: domainBlocks,
@@ -153,7 +155,7 @@ export class PlannerService {
             planning_start_date: group.planning_start_date,
             planning_end_date: group.planning_end_date,
             buffer_before_work_min: group.buffer_before_work_min,
-            slotSize: 30,
+            slotSize,
             yellow_threshold: group.yellow_threshold
           });
 

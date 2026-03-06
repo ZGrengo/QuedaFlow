@@ -18,6 +18,7 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../core/compone
 import { AuthService } from '../../../core/services/auth.service';
 import { hhmmToMin, minToHhmm, timeRangesOverlap } from '@domain/index';
 import { TimeInputComponent } from '../../../shared/time-input';
+import { dateToLocalISOString } from '../../../core/utils/date-format';
 
 const DOW_LABELS: Record<number, string> = {
   0: 'Domingo',
@@ -78,17 +79,22 @@ const DOW_LABELS: Record<number, string> = {
                 <div class="form-row">
                   <mat-form-field appearance="outline">
                     <mat-label>Inicio</mat-label>
-                    <input matInput [matDatepicker]="startPicker" formControlName="planning_start_date">
+                    <input matInput [matDatepicker]="startPicker" formControlName="planning_start_date"
+                      [min]="minPlanningDate" [max]="maxPlanningDate">
                     <mat-datepicker-toggle matSuffix [for]="startPicker"></mat-datepicker-toggle>
-                    <mat-datepicker #startPicker></mat-datepicker>
+                    <mat-datepicker #startPicker [startAt]="minPlanningDate"></mat-datepicker>
                   </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>Fin</mat-label>
-                    <input matInput [matDatepicker]="endPicker" formControlName="planning_end_date">
+                    <input matInput [matDatepicker]="endPicker" formControlName="planning_end_date"
+                      [min]="endDateMin" [max]="maxPlanningDate">
                     <mat-datepicker-toggle matSuffix [for]="endPicker"></mat-datepicker-toggle>
-                    <mat-datepicker #endPicker></mat-datepicker>
+                    <mat-datepicker #endPicker [startAt]="endDateMin"></mat-datepicker>
                   </mat-form-field>
                 </div>
+                <p *ngIf="settingsForm.hasError('planningRange')" class="planning-error">
+                  La fecha de inicio no puede ser pasada y debe ser anterior o igual a la fecha fin.
+                </p>
               </div>
 
               <div class="form-section">
@@ -217,6 +223,12 @@ const DOW_LABELS: Record<number, string> = {
       color: var(--qf-primary);
       flex-shrink: 0;
     }
+
+    .planning-error {
+      margin: -8px 0 16px 0;
+      font-size: 0.875rem;
+      color: var(--qf-primary);
+    }
   `]
 })
 export class GroupSettingsComponent implements OnInit {
@@ -230,6 +242,29 @@ export class GroupSettingsComponent implements OnInit {
   minToHhmm = minToHhmm;
   DOW_LABELS = DOW_LABELS;
   dowOptions = Object.entries(DOW_LABELS).map(([value, label]) => ({ value: +value, label }));
+
+  get minPlanningDate(): Date {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+  }
+
+  get endDateMin(): Date {
+    const start = this.settingsForm?.get('planning_start_date')?.value;
+    if (start) {
+      const d = new Date(start);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+    return this.minPlanningDate;
+  }
+
+  get maxPlanningDate(): Date {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() + 1);
+    d.setHours(23, 59, 59, 999);
+    return d;
+  }
 
   constructor(
     private route: ActivatedRoute,
@@ -260,6 +295,13 @@ export class GroupSettingsComponent implements OnInit {
     const start = g.get('planning_start_date')?.value;
     const end = g.get('planning_end_date')?.value;
     if (!start || !end) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startDate = new Date(start);
+    startDate.setHours(0, 0, 0, 0);
+    if (startDate < today) {
+      return { planningRange: true };
+    }
     if (new Date(start) > new Date(end)) {
       return { planningRange: true };
     }
@@ -280,9 +322,14 @@ export class GroupSettingsComponent implements OnInit {
         this.authService.getCurrentUser().subscribe(user => {
           this.isHost = user?.id === group.host_user_id;
         });
+        const today = dateToLocalISOString(new Date());
+        let startDate = group.planning_start_date;
+        let endDate = group.planning_end_date;
+        if (startDate < today) startDate = today;
+        if (endDate < startDate) endDate = startDate;
         this.settingsForm.patchValue({
-          planning_start_date: group.planning_start_date,
-          planning_end_date: group.planning_end_date,
+          planning_start_date: startDate,
+          planning_end_date: endDate,
           buffer_before_work_min: group.buffer_before_work_min,
           yellow_threshold: group.yellow_threshold,
           target_people: group.target_people,
@@ -311,10 +358,10 @@ export class GroupSettingsComponent implements OnInit {
       ...v,
       planning_start_date: typeof v.planning_start_date === 'string'
         ? v.planning_start_date
-        : new Date(v.planning_start_date).toISOString().split('T')[0],
+        : dateToLocalISOString(new Date(v.planning_start_date)),
       planning_end_date: typeof v.planning_end_date === 'string'
         ? v.planning_end_date
-        : new Date(v.planning_end_date).toISOString().split('T')[0]
+        : dateToLocalISOString(new Date(v.planning_end_date))
     };
     this.groupService.updateSettings(this.group.id, payload).subscribe({
       next: (updated) => {

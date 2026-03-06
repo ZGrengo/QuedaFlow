@@ -21,7 +21,7 @@ import { GroupService } from '../../../core/services/group.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { AvailabilityBlock } from '@domain/index';
 import { minToHhmm, hhmmToMin, timeRangesOverlap } from '@domain/index';
-import { formatDateDDMMYYYY } from '../../../core/utils/date-format';
+import { formatDateDDMMYYYY, dateToLocalISOString } from '../../../core/utils/date-format';
 import { TimeInputComponent } from '../../../shared/time-input';
 
 @Component({
@@ -422,8 +422,8 @@ export class BlocksManagerComponent implements OnInit {
     this.blocksService.getUserBlocks(this.groupId, this.userId).subscribe({
       next: (blocks) => {
         this.myBlocks = blocks;
-        const rangeStart = this.minDate.toISOString().split('T')[0];
-        const rangeEnd = this.maxDate.toISOString().split('T')[0];
+        const rangeStart = dateToLocalISOString(this.minDate);
+        const rangeEnd = dateToLocalISOString(this.maxDate);
         this.preferredCount = blocks.filter(
           b => b.type === 'PREFERRED' && b.date >= rangeStart && b.date <= rangeEnd
         ).length;
@@ -439,13 +439,13 @@ export class BlocksManagerComponent implements OnInit {
 
     this.loading = true;
     const formValue = this.blockForm.value;
-    const today = new Date().toISOString().split('T')[0];
-    const minStr = this.minDate.toISOString().split('T')[0];
-    const maxStr = this.maxDate.toISOString().split('T')[0];
+    const today = dateToLocalISOString(new Date());
+    const minStr = dateToLocalISOString(this.minDate);
+    const maxStr = dateToLocalISOString(this.maxDate);
 
     if (formValue.mode === 'single') {
       const date = new Date(formValue.date);
-      const dateStr = date.toISOString().split('T')[0];
+      const dateStr = dateToLocalISOString(date);
       if (dateStr < today) {
         this.loading = false;
         this.notification.error('No se pueden crear bloques en fechas pasadas');
@@ -500,7 +500,7 @@ export class BlocksManagerComponent implements OnInit {
       const end = new Date(this.maxDate.getFullYear(), this.maxDate.getMonth(), this.maxDate.getDate());
       let d = new Date(start);
       while (d <= end) {
-        const dateStr = d.toISOString().split('T')[0];
+        const dateStr = dateToLocalISOString(d);
         if (dateStr >= today) {
           const jsDow = d.getDay();
           const dow = jsDow === 0 ? 7 : jsDow;

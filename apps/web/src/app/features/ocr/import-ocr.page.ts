@@ -14,7 +14,7 @@ import { BlocksService } from '../../core/services/blocks.service';
 import { ImportOcrService } from './import-ocr.service';
 import { ShiftEditorComponent } from './components/shift-editor.component';
 import { DetectedShift, ParseIssue } from '@domain/index';
-import { formatDateDDMMYYYY } from '../../core/utils/date-format';
+import { formatDateDDMMYYYY, dateToLocalISOString } from '../../core/utils/date-format';
 import { minToHhmm } from '@domain/index';
 
 type Step = 'upload' | 'results' | 'saving';
@@ -313,6 +313,9 @@ export class ImportOcrPageComponent implements OnInit, OnDestroy {
         this.group = group;
         this.minDate = new Date(group.planning_start_date);
         this.maxDate = new Date(group.planning_end_date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (this.minDate < today) this.minDate = today;
       },
       error: (err: unknown) => {
         this.notification.error('Error al cargar el grupo');
@@ -454,7 +457,7 @@ export class ImportOcrPageComponent implements OnInit, OnDestroy {
   }
 
   addNewShift() {
-    const today = new Date().toISOString().split('T')[0];
+    const today = dateToLocalISOString(new Date());
     const newShift: DetectedShift = {
       dateISO: today,
       startMin: 540, // 09:00

@@ -10,6 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { DetectedShift } from '@domain/index';
 import { minToHhmm, hhmmToMin } from '@domain/index';
 import { TimeInputComponent } from '../../../shared/time-input';
+import { dateToLocalISOString } from '../../../core/utils/date-format';
 
 @Component({
   selector: 'app-shift-editor',
@@ -46,7 +47,7 @@ import { TimeInputComponent } from '../../../shared/time-input';
             label="Fin"
             [control]="$any(shiftForm.get('endTime'))"
             [required]="true"
-            helper="HH:MM (00:00 = medianoche)">
+            helper="HH:MM">
           </qf-time-input>
         </div>
 
@@ -93,6 +94,11 @@ import { TimeInputComponent } from '../../../shared/time-input';
       gap: 12px;
       flex: 1;
       min-width: 0;
+    }
+
+    .time-row qf-time-input {
+      min-width: 180px;
+      flex: 1;
     }
 
     .time-field {
@@ -206,7 +212,7 @@ export class ShiftEditorComponent implements OnInit {
   private emitShift() {
     const formValue = this.shiftForm.value;
     const date = formValue.date as Date;
-    const dateISO = date.toISOString().split('T')[0];
+    const dateISO = dateToLocalISOString(date);
     const startMin = hhmmToMin(formValue.startTime);
     // Handle 00:00 as end time - convert to 1440 (end of day)
     let endMin = formValue.endTime === '00:00' ? 1440 : hhmmToMin(formValue.endTime);
