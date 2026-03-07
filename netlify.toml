@@ -1,10 +1,14 @@
 # QuedaFlow – Netlify (monorepo: app en apps/web)
 # https://docs.netlify.com/configure-builds/file-based-configuration/
+#
+# El plugin @netlify/angular-runtime exige publish = "dist/web/browser", por eso
+# usamos base = "apps/web" y ese publish (relativo a base). El comando instala
+# desde la raíz del repo para que funcionen los workspaces de npm.
 
 [build]
-  # Sin base: instalamos desde la raíz (workspaces) y construimos la app web
-  command = "cd apps/web && node scripts/set-env.js && npm run build"
-  publish = "apps/web/dist/web/browser"
+  base = "apps/web"
+  command = "cd ../.. && npm install && cd apps/web && node scripts/set-env.js && npm run build"
+  publish = "dist/web/browser"
 
 # SPA: todas las rutas sirven index.html para el routing de Angular
 [[redirects]]
