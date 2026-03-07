@@ -46,6 +46,21 @@ export class AuthService {
     }
   }
 
+  async signInWithGoogle(redirectPath?: string): Promise<void> {
+    const origin = window.location.origin;
+    const path = redirectPath && redirectPath.startsWith('/') ? redirectPath : '/dashboard';
+    const { error } = await this.supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${origin}${path}`
+      }
+    });
+
+    if (error) {
+      throw error;
+    }
+  }
+
   async signOut(): Promise<void> {
     const { error } = await this.supabase.auth.signOut();
     if (error) {

@@ -38,7 +38,10 @@ import { GroupService, Group } from '../../../core/services/group.service';
       <mat-toolbar class="qf-toolbar qf-toolbar--full qf-toolbar--light toolbar">
         <a routerLink="/" class="title title-link">QuedaFlow</a>
         <span class="spacer"></span>
-        <span class="user-email">{{ userEmail }}</span>
+        <div class="user-info">
+          <img *ngIf="userAvatarUrl" [src]="userAvatarUrl" [alt]="userDisplayName" class="user-avatar" referrerpolicy="no-referrer">
+          <span class="user-name">{{ userDisplayName }}</span>
+        </div>
         <button mat-icon-button (click)="signOut()" matTooltip="Cerrar sesión">
           <mat-icon>logout</mat-icon>
         </button>
@@ -163,7 +166,7 @@ import { GroupService, Group } from '../../../core/services/group.service';
     }
 
     .qf-toolbar--light .title-link,
-    .qf-toolbar--light .user-email,
+    .qf-toolbar--light .user-name,
     .qf-toolbar--light .mat-icon {
       color: inherit;
     }
@@ -186,9 +189,22 @@ import { GroupService, Group } from '../../../core/services/group.service';
       flex: 1 1 auto;
     }
 
-    .user-email {
-      font-size: 0.875rem;
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
       margin-right: 8px;
+    }
+
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .user-name {
+      font-size: 0.875rem;
       opacity: 0.9;
     }
 
@@ -433,7 +449,8 @@ import { GroupService, Group } from '../../../core/services/group.service';
   `]
 })
 export class DashboardComponent {
-  userEmail = '';
+  userDisplayName = '';
+  userAvatarUrl: string | null = null;
   joinForm: FormGroup;
   joinLoading = false;
   joinMessage = '';
@@ -456,7 +473,9 @@ export class DashboardComponent {
     });
 
     this.authService.getCurrentUser().subscribe(user => {
-      this.userEmail = user?.email ?? '';
+      const meta = user?.user_metadata as Record<string, string> | undefined;
+      this.userDisplayName = meta?.['full_name'] ?? meta?.['name'] ?? user?.email ?? '';
+      this.userAvatarUrl = meta?.['avatar_url'] ?? meta?.['picture'] ?? null;
       this.currentUserId = user?.id ?? null;
     });
 

@@ -17,7 +17,7 @@ import { MatIconModule } from '@angular/material/icon';
         </p>
         <div class="hero-actions">
           <button mat-raised-button class="qf-btn-primary" routerLink="/login">
-            Crear grupo
+            ¡Inicia sesión y crea tu grupo!
           </button>
           <button mat-stroked-button class="qf-btn-secondary" type="button" (click)="viewHowItWorks.emit()">
             <mat-icon>play_circle</mat-icon>

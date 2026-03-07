@@ -34,14 +34,19 @@ envContent.split('\n').forEach(line => {
   }
 });
 
+// Fallback to process.env (e.g. Netlify injects NG_APP_* at build time)
+const supabaseUrl = envVars.NG_APP_SUPABASE_URL || process.env.NG_APP_SUPABASE_URL || '';
+const supabaseAnonKey = envVars.NG_APP_SUPABASE_ANON_KEY || process.env.NG_APP_SUPABASE_ANON_KEY || '';
+const isProduction = process.env.NODE_ENV === 'production';
+
 // Generate environment.ts file
-const envTsContent = `// Auto-generated from .env file
+const envTsContent = `// Auto-generated from .env or process.env (e.g. Netlify)
 // Do not edit manually - run 'node scripts/set-env.js' to regenerate
 
 export const environment = {
-  production: false,
-  supabaseUrl: '${envVars.NG_APP_SUPABASE_URL || ''}',
-  supabaseAnonKey: '${envVars.NG_APP_SUPABASE_ANON_KEY || ''}'
+  production: ${isProduction},
+  supabaseUrl: '${supabaseUrl.replace(/'/g, "\\'")}',
+  supabaseAnonKey: '${supabaseAnonKey.replace(/'/g, "\\'")}'
 };
 `;
 
@@ -49,6 +54,6 @@ const outputPath = path.join(__dirname, '..', 'src', 'environments', 'environmen
 fs.writeFileSync(outputPath, envTsContent, 'utf8');
 
 console.log('✅ Environment file generated successfully!');
-console.log(`   Supabase URL: ${envVars.NG_APP_SUPABASE_URL ? '✓ Set' : '✗ Missing'}`);
-console.log(`   Supabase Key: ${envVars.NG_APP_SUPABASE_ANON_KEY ? '✓ Set' : '✗ Missing'}`);
+console.log(`   Supabase URL: ${supabaseUrl ? '✓ Set' : '✗ Missing'}`);
+console.log(`   Supabase Key: ${supabaseAnonKey ? '✓ Set' : '✗ Missing'}`);
 
