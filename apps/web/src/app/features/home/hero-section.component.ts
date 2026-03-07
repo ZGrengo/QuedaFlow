@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -16,8 +16,8 @@ import { MatIconModule } from '@angular/material/icon';
           Sube tu horario, encuentra los mejores huecos automáticamente y deja que el sistema calcule por ti.
         </p>
         <div class="hero-actions">
-          <button mat-raised-button class="qf-btn-primary" routerLink="/login">
-            ¡Inicia sesión y crea tu grupo!
+          <button mat-raised-button class="qf-btn-primary" [routerLink]="primaryLink">
+            {{ primaryLabel }}
           </button>
           <button mat-stroked-button class="qf-btn-secondary" type="button" (click)="viewHowItWorks.emit()">
             <mat-icon>play_circle</mat-icon>
@@ -217,6 +217,8 @@ import { MatIconModule } from '@angular/material/icon';
   `]
 })
 export class HeroSectionComponent {
+  @Input() primaryLabel = '¡Inicia sesión y crea tu grupo!';
+  @Input() primaryLink = '/login';
   @Output() viewHowItWorks = new EventEmitter<void>();
 
   sampleSlots = [

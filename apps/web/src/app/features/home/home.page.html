@@ -1,7 +1,10 @@
 <main class="home">
   <!-- HERO: on dark background, no surface -->
   <section class="qf-hero">
-    <app-hero-section (viewHowItWorks)="scrollToSection('how-it-works')"></app-hero-section>
+    <app-hero-section
+      [primaryLabel]="primaryLabel"
+      [primaryLink]="primaryLink"
+      (viewHowItWorks)="scrollToSection('how-it-works')"></app-hero-section>
   </section>
 
   <!-- HOW IT WORKS: light surface -->
@@ -136,8 +139,8 @@
     <app-cta-section
       [title]="'Empieza a organizar mejor hoy.'"
       [subtitle]="'Crea un grupo en segundos, invita a tu equipo y deja que QuedaFlow haga el trabajo duro.'"
-      [primaryLabel]="'¡Inicia sesión y crea tu grupo!'"
-      [primaryLink]="'/login'">
+      [primaryLabel]="primaryLabel"
+      [primaryLink]="primaryLink">
     </app-cta-section>
   </section>
 

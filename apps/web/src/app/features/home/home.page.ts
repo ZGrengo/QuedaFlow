@@ -7,6 +7,7 @@ import { MatCardModule } from '@angular/material/card';
 import { HeroSectionComponent } from './hero-section.component';
 import { FeatureCardComponent } from './feature-card.component';
 import { CtaSectionComponent } from './cta-section.component';
+import { AuthService } from '../../core/services/auth.service';
 import { trigger, transition, style, animate } from '@angular/animations';
 
 @Component({
@@ -35,6 +36,21 @@ import { trigger, transition, style, animate } from '@angular/animations';
 })
 export class HomePageComponent {
   currentYear = new Date().getFullYear();
+  isLoggedIn = false;
+
+  constructor(private authService: AuthService) {
+    this.authService.getCurrentUser().subscribe(user => {
+      this.isLoggedIn = !!user;
+    });
+  }
+
+  get primaryLabel(): string {
+    return this.isLoggedIn ? 'Crea tu grupo' : '¡Inicia sesión y crea tu grupo!';
+  }
+
+  get primaryLink(): string {
+    return this.isLoggedIn ? '/create-group' : '/login';
+  }
 
   scrollToSection(id: string): void {
     const el = document.getElementById(id);

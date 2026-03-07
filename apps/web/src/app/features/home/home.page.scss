@@ -1,6 +1,7 @@
 /* Home: layout and section structure. Colors from global tokens. */
 .home {
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 /* Hero: full-bleed on dark background, content centered with max-width */
@@ -16,6 +17,9 @@
   margin-left: auto;
   margin-right: auto;
   margin-bottom: clamp(24px, 4vw, 40px);
+  padding-left: clamp(16px, 4vw, 24px);
+  padding-right: clamp(16px, 4vw, 24px);
+  box-sizing: border-box;
 
   &:first-of-type.qf-surface {
     margin-top: clamp(24px, 4vw, 48px);
@@ -39,11 +43,17 @@
   font-size: clamp(0.9rem, 1.2vw, 1rem);
 }
 
-/* How it works: cards grid */
+/* How it works: cards grid – contained so cards don't exceed section */
+.how-it-works {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .how-it-works .cards-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: clamp(16px, 2.5vw, 24px);
+  min-width: 0;
 }
 
 @media (max-width: 960px) {

@@ -28,6 +28,8 @@ import { MatIconModule } from '@angular/material/icon';
       flex-direction: column;
       gap: 10px;
       height: 100%;
+      min-width: 0;
+      box-sizing: border-box;
     }
 
     .feature-icon {
@@ -58,6 +60,7 @@ import { MatIconModule } from '@angular/material/icon';
       font-size: 0.95rem;
       color: var(--qf-text-muted);
       line-height: 1.5;
+      overflow-wrap: break-word;
     }
   `]
 })
