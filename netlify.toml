@@ -1,0 +1,13 @@
+# QuedaFlow – Netlify (monorepo: app en apps/web)
+# https://docs.netlify.com/configure-builds/file-based-configuration/
+
+[build]
+  # Sin base: instalamos desde la raíz (workspaces) y construimos la app web
+  command = "cd apps/web && node scripts/set-env.js && npm run build"
+  publish = "apps/web/dist/web/browser"
+
+# SPA: todas las rutas sirven index.html para el routing de Angular
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

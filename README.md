@@ -25,12 +25,14 @@ quedaflow/
 ### Stack Tecnológico
 
 **Frontend:**
+
 - Angular 17+ (standalone components)
 - Angular Material (UI components)
 - RxJS (reactive programming)
 - Supabase JS Client
 
 **Backend:**
+
 - Supabase (PostgreSQL + Auth + RLS)
 - Row Level Security (RLS) para seguridad
 
@@ -98,21 +100,22 @@ npm run test:watch
 ### 2. Ejecutar Migraciones
 
 En Supabase Dashboard:
+
 1. Ve a SQL Editor
 2. Ejecuta las migraciones en orden:
-   - `001_schema.sql`
-   - `002_rls_policies.sql`
-   - `003_functions_and_triggers.sql`
-   - `004_grants_public_schema.sql`
-   - `005_create_group_rpc.sql`
-   - `006_fix_generate_group_code_ambiguous.sql`
-   - `007_join_group_by_code_rpc.sql`
-   - `008_group_planning_settings.sql`
-   - `009_rls_and_triggers_validations.sql`
-   - `010_group_delete_policy.sql`
-   - `011_limit_max_groups_per_user.sql`
-   - `012_group_notification_sent_at.sql`
-   - `013_grant_service_role_public_schema.sql`
+    - `001_schema.sql`
+    - `002_rls_policies.sql`
+    - `003_functions_and_triggers.sql`
+    - `004_grants_public_schema.sql`
+    - `005_create_group_rpc.sql`
+    - `006_fix_generate_group_code_ambiguous.sql`
+    - `007_join_group_by_code_rpc.sql`
+    - `008_group_planning_settings.sql`
+    - `009_rls_and_triggers_validations.sql`
+    - `010_group_delete_policy.sql`
+    - `011_limit_max_groups_per_user.sql`
+    - `012_group_notification_sent_at.sql`
+    - `013_grant_service_role_public_schema.sql`
 
 O usando Supabase CLI:
 
@@ -123,11 +126,12 @@ supabase db push
 ### 3. Configurar Auth
 
 En Supabase Dashboard:
+
 1. Ve a Authentication > Providers
 2. Habilita Email provider
 3. Configura redirect URLs:
-   - `http://localhost:4200/**`
-   - Tu dominio de producción
+    - `http://localhost:4200/**`
+    - Tu dominio de producción
 
 ### 4. Edge Function notify-top-slots (emails con Brevo)
 
@@ -219,19 +223,12 @@ O en el Dashboard: Project Settings → Edge Functions → Secrets.
 ## Roadmap
 
 ### MVP Actual ✅
+
 - [x] Autenticación con Supabase Auth (magic link)
 - [x] Crear/unirse a grupos
 - [x] Gestión de bloques de disponibilidad
 - [x] Cálculo de mejores huecos
 - [x] RLS completo
-
-### Próximas Features
-
-- [x] **OCR para bloques**: Importar horarios desde capturas de pantalla (Mapal-like)
-- [ ] **Emails**: Notificaciones cuando hay nuevos huecos
-- [ ] **Exportar calendario**: iCal export
-- [ ] **Múltiples grupos**: Dashboard con lista de grupos
-- [ ] **Configuración avanzada**: Más opciones de buffer y thresholds
 
 ### Deploy
 
@@ -285,12 +282,14 @@ supabase/
 ## Checklist de Implementación
 
 ### Setup Inicial
+
 - [x] Estructura de monorepo
 - [x] Angular 17+ con Material
 - [x] Domain package con tests
 - [x] Migraciones SQL con RLS
 
 ### Funcionalidades Core
+
 - [x] Autenticación (magic link)
 - [x] Crear grupo
 - [x] Unirse a grupo por código
@@ -300,12 +299,14 @@ supabase/
 - [x] Ranking de mejores huecos
 
 ### UI/UX
+
 - [x] Login page
 - [x] Group detail page
 - [x] Blocks manager
 - [x] Planner view con colores
 
 ### Seguridad
+
 - [x] RLS en todas las tablas
 - [x] Policies para cada operación
 - [x] Validaciones en triggers
@@ -320,19 +321,23 @@ Es normal ver warnings sobre paquetes deprecados y vulnerabilidades al ejecutar 
 **Puedes continuar con el desarrollo normalmente.**
 
 ### Error: Missing Supabase environment variables
+
 - Verifica que `.env` existe en `apps/web/`
 - Reinicia el servidor de desarrollo
 
 ### Error: RLS policy violation
+
 - Verifica que el usuario está autenticado
 - Verifica que el usuario pertenece al grupo
 - Revisa las policies en `002_rls_policies.sql`
 
 ### Error: Maximum 3 PREFERRED blocks
+
 - Es una validación intencional (máx 3 dentro del rango planning)
 - Elimina un bloque PREFERRED existente antes de añadir uno nuevo
 
 ### Error: Fuera del rango de planificación / fecha pasada
+
 - Los bloques deben tener fecha dentro de `planning_start_date` y `planning_end_date` del grupo
 - No se permiten fechas pasadas
 - El host puede ampliar el rango en Configuración del grupo
@@ -349,9 +354,9 @@ La funcionalidad de Import OCR permite subir una captura de pantalla de tu app d
 2. **Sube una imagen**: Selecciona un archivo PNG o JPG con la captura de tu horario
 3. **Analiza con OCR**: Haz clic en "Analizar con OCR" y espera a que procese (puede tardar unos segundos)
 4. **Revisa y edita**: El sistema mostrará los turnos detectados. Puedes:
-   - Editar fecha, hora de inicio y fin de cada turno
-   - Eliminar turnos incorrectos
-   - Añadir turnos manualmente
+    - Editar fecha, hora de inicio y fin de cada turno
+    - Eliminar turnos incorrectos
+    - Añadir turnos manualmente
 5. **Guarda**: Haz clic en "Guardar turnos" para insertar los bloques WORK en Supabase
 
 **Inputs de hora:** En toda la app (bloques, OCR, ventanas bloqueadas) los campos de hora aceptan formato flexible: puedes escribir `9`, `930`, `09.30` o `09:00`; al salir del campo se normaliza a HH:MM (ej: 09:00). El botón del reloj abre el selector nativo en móvil cuando está disponible.
@@ -360,13 +365,13 @@ La funcionalidad de Import OCR permite subir una captura de pantalla de tu app d
 
 - **Calidad del OCR**: El OCR puede fallar con imágenes de baja calidad, texto borroso o fuentes muy pequeñas. Siempre revisa los turnos detectados antes de guardar.
 - **Formato esperado**: El parser está optimizado para formato Mapal-like con:
-  - Fechas en formato `dd/mm` o `dd/mm/yyyy`
-  - Rangos de horas en formato `HH:mm - HH:mm`
-  - Marcadores de "Día libre" o "Libre"
+    - Fechas en formato `dd/mm` o `dd/mm/yyyy`
+    - Rangos de horas en formato `HH:mm - HH:mm`
+    - Marcadores de "Día libre" o "Libre"
 - **Validaciones**: Los turnos deben cumplir las mismas reglas que los bloques manuales:
-  - Fecha dentro del rango de planificación del grupo
-  - Fecha no en el pasado
-  - Horas válidas (00:00 - 23:59)
+    - Fecha dentro del rango de planificación del grupo
+    - Fecha no en el pasado
+    - Horas válidas (00:00 - 23:59)
 - **Turnos que cruzan medianoche**: Se detectan automáticamente y se dividen en 2 bloques al guardar
 
 ### Ejemplo de Texto OCR
@@ -392,19 +397,7 @@ MIÉRCOLES 17/01
 ### Debug
 
 Si el OCR no detecta turnos correctamente:
+
 1. Revisa el panel "Texto OCR (debug)" para ver el texto crudo extraído
 2. Verifica que las fechas y horas están en el formato esperado
 3. Intenta mejorar la calidad de la imagen (más contraste, mejor resolución)
-
-## Contribuir
-
-1. Crea una rama desde `main`
-2. Implementa cambios
-3. Ejecuta tests: `npm run test:domain`
-4. Verifica linting
-5. Crea PR
-
-## Licencia
-
-MIT
-
