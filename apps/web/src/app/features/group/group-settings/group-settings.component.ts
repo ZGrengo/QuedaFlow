@@ -120,7 +120,7 @@ const DOW_LABELS: Record<number, string> = {
                       formControlName="target_people"
                       min="1"
                     >
-                    <mat-hint>Personas mínimas necesarias para realizar la actividad</mat-hint>
+                    <mat-hint class="min-hint">Mínimo necesario para la actividad</mat-hint>
                   </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>Duración mínima reunión (min)</mat-label>
@@ -228,6 +228,25 @@ const DOW_LABELS: Record<number, string> = {
       margin: -8px 0 16px 0;
       font-size: 0.875rem;
       color: var(--qf-primary);
+    }
+
+    @media (max-width: 420px) {
+      .form-row {
+        flex-direction: column;
+      }
+
+      .form-row mat-form-field {
+        width: 100%;
+      }
+
+      .buffer-hint {
+        font-size: 0.8rem;
+        margin-top: 2px;
+      }
+
+      .min-hint {
+        display: none;
+      }
     }
   `]
 })

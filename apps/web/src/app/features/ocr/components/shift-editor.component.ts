@@ -51,10 +51,6 @@ import { dateToLocalISOString } from '../../../core/utils/date-format';
           </qf-time-input>
         </div>
 
-        <div class="notes" *ngIf="shiftForm.get('crossesMidnight')?.value">
-          <mat-icon>info</mat-icon>
-          <span>Este turno cruza medianoche (se dividirá al guardar)</span>
-        </div>
       </div>
       <button mat-icon-button color="warn" type="button" (click)="onDelete()" class="delete-btn" aria-label="Eliminar turno">
         <mat-icon>delete</mat-icon>
@@ -167,6 +163,21 @@ import { dateToLocalISOString } from '../../../core/utils/date-format';
       .shift-editor {
         position: relative;
         padding-top: 44px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .time-row {
+        flex-direction: column;
+      }
+
+      .time-row qf-time-input {
+        min-width: 0;
+        width: 100%;
+      }
+
+      .notes {
+        font-size: 0.8rem;
       }
     }
   `]

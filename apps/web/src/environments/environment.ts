@@ -1,4 +1,4 @@
-// Auto-generated from .env file
+// Auto-generated from .env or process.env (e.g. Netlify)
 // Do not edit manually - run 'node scripts/set-env.js' to regenerate
 
 export const environment = {

@@ -117,7 +117,6 @@ import { TimeInputComponent } from '../../../shared/time-input';
               </qf-time-input>
             </div>
             <p *ngIf="blockForm.hasError('sameStartEnd')" class="time-hint time-hint-error">La hora fin debe ser distinta del inicio.</p>
-            <p *ngIf="crossesMidnightHint" class="time-hint time-hint-info">Este bloque cruza medianoche (inicio &gt; fin).</p>
 
             <p *ngIf="blockForm.get('mode')?.value === 'fixed'" class="fixed-hint">
               Se crearán bloques para todos los días entre «Día desde» y «Día hasta» dentro del rango de planificación del grupo.
@@ -143,23 +142,23 @@ import { TimeInputComponent } from '../../../shared/time-input';
       <mat-card class="qf-surface blocks-list">
         <mat-card-header>
           <mat-card-title>Mis Bloques</mat-card-title>
-          <button *ngIf="myBlocks.length > 0" mat-stroked-button color="warn" (click)="deleteAllBlocks()" class="delete-all-btn">
+          <button *ngIf="displayBlocks.length > 0" mat-stroked-button color="warn" (click)="deleteAllBlocks()" class="delete-all-btn">
             <mat-icon>delete_sweep</mat-icon>
             Eliminar todos
           </button>
         </mat-card-header>
         <mat-card-content>
-          <div *ngFor="let block of myBlocks" class="block-item">
+          <div *ngFor="let block of displayBlocks" class="block-item">
             <mat-chip-set>
               <mat-chip [class]="'chip-type chip-' + block.type.toLowerCase()">{{ blockTypeLabel(block.type) }}</mat-chip>
               <mat-chip>{{ block.date | date:'dd/MM/yyyy' }}</mat-chip>
               <mat-chip>{{ minToHhmm(block.start_min) }} - {{ minToHhmm(block.end_min) }}</mat-chip>
             </mat-chip-set>
-            <button mat-icon-button color="warn" (click)="deleteBlock(block.id!)">
+            <button mat-icon-button color="warn" (click)="deleteBlock(block)">
               <mat-icon>delete</mat-icon>
             </button>
           </div>
-          <div *ngIf="myBlocks.length === 0" class="empty">No hay bloques añadidos</div>
+          <div *ngIf="displayBlocks.length === 0" class="empty">No hay bloques añadidos</div>
         </mat-card-content>
       </mat-card>
     </div>
@@ -304,7 +303,8 @@ import { TimeInputComponent } from '../../../shared/time-input';
 })
 export class BlocksManagerComponent implements OnInit {
   blockForm: FormGroup;
-  myBlocks: AvailabilityBlock[] = [];
+  myBlocks: AvailabilityBlock[] = []; // datos reales
+  displayBlocks: Array<AvailabilityBlock & { mergedIds: string[] }> = []; // vista (merge medianoche)
   loading = false;
   code = '';
   groupId = '';
@@ -344,18 +344,9 @@ export class BlocksManagerComponent implements OnInit {
     return s === e ? { sameStartEnd: true } : null;
   }
 
-  get crossesMidnightHint(): boolean {
-    const s = this.blockForm.get('start_time')?.value;
-    const e = this.blockForm.get('end_time')?.value;
-    if (!s || !e || !/^\d{2}:\d{2}$/.test(s) || !/^\d{2}:\d{2}$/.test(e)) return false;
-    try {
-      const startMin = hhmmToMin(s);
-      const endMin = e === '00:00' ? 1440 : hhmmToMin(e);
-      return endMin < startMin;
-    } catch {
-      return false;
-    }
-  }
+  // Nota: aunque internamente los bloques que cruzan medianoche se dividen
+  // en dos, no mostramos aviso aquí para simplificar la experiencia. A nivel
+  // visual se agrupan de nuevo en la lista de bloques.
 
   readonly weekdayOptions: { value: number; label: string }[] = [
     { value: 1, label: 'Lunes' },
@@ -422,6 +413,7 @@ export class BlocksManagerComponent implements OnInit {
     this.blocksService.getUserBlocks(this.groupId, this.userId).subscribe({
       next: (blocks) => {
         this.myBlocks = blocks;
+        this.displayBlocks = this.mergeMidnightBlocksForDisplay(blocks);
         const rangeStart = dateToLocalISOString(this.minDate);
         const rangeEnd = dateToLocalISOString(this.maxDate);
         this.preferredCount = blocks.filter(
@@ -432,6 +424,53 @@ export class BlocksManagerComponent implements OnInit {
         console.error(err);
       }
     });
+  }
+
+  private mergeMidnightBlocksForDisplay(blocks: AvailabilityBlock[]): Array<AvailabilityBlock & { mergedIds: string[] }> {
+    const result: Array<AvailabilityBlock & { mergedIds: string[] }> = [];
+    const sorted = [...blocks].sort((a, b) => {
+      if (a.date === b.date) return a.start_min - b.start_min;
+      return a.date < b.date ? -1 : 1;
+    });
+
+    const isNextDay = (dateA: string, dateB: string): boolean => {
+      const a = new Date(dateA);
+      const b = new Date(dateB);
+      const diff = (b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24);
+      return diff === 1;
+    };
+
+    let i = 0;
+    while (i < sorted.length) {
+      const current = sorted[i];
+      const next = sorted[i + 1];
+      if (
+        next &&
+        current.id &&
+        next.id &&
+        current.group_id === next.group_id &&
+        current.user_id === next.user_id &&
+        current.type === next.type &&
+        isNextDay(current.date, next.date) &&
+        current.end_min === 1440 &&
+        next.start_min === 0
+      ) {
+        result.push({
+          ...current,
+          end_min: next.end_min,
+          mergedIds: [current.id, next.id]
+        });
+        i += 2;
+      } else {
+        result.push({
+          ...current,
+          mergedIds: current.id ? [current.id] : []
+        });
+        i += 1;
+      }
+    }
+
+    return result;
   }
 
   async onSubmit() {
@@ -575,7 +614,7 @@ export class BlocksManagerComponent implements OnInit {
     });
   }
 
-  deleteBlock(blockId: string) {
+  deleteBlock(block: AvailabilityBlock & { mergedIds: string[] }) {
     const data: ConfirmDialogData = {
       title: 'Eliminar bloque',
       message: '¿Eliminar este bloque?',
@@ -584,23 +623,24 @@ export class BlocksManagerComponent implements OnInit {
     };
     this.dialog.open(ConfirmDialogComponent, { data, width: '400px' }).afterClosed().subscribe(confirmed => {
       if (!confirmed) return;
-      this.blocksService.deleteBlock(blockId).subscribe({
-        next: () => {
+      const ids = block.mergedIds && block.mergedIds.length > 0 ? block.mergedIds : (block.id ? [block.id] : []);
+      if (ids.length === 0) return;
+      Promise.all(ids.map(id => this.blocksService.deleteBlock(id).toPromise()))
+        .then(() => {
           this.loadMyBlocks();
           this.notification.success('Bloque eliminado');
-        },
-        error: (err) => {
+        })
+        .catch((err) => {
           this.notification.error(err?.message ?? 'Error al eliminar bloque');
           console.error(err);
-        }
-      });
+        });
     });
   }
 
   deleteAllBlocks() {
     const data: ConfirmDialogData = {
       title: 'Eliminar todos los bloques',
-      message: `¿Eliminar los ${this.myBlocks.length} bloques? Esta acción no se puede deshacer.`,
+      message: `¿Eliminar los ${this.displayBlocks.length} bloques? Esta acción no se puede deshacer.`,
       confirmText: 'Eliminar todos',
       confirmWarn: true
     };
