@@ -45,11 +45,11 @@ export class HomePageComponent {
   }
 
   get primaryLabel(): string {
-    return this.isLoggedIn ? 'Crea tu grupo' : '¡Inicia sesión y crea tu grupo!';
+    return this.isLoggedIn ? 'Dashboard' : '¡Inicia sesión y crea tu grupo!';
   }
 
   get primaryLink(): string {
-    return this.isLoggedIn ? '/create-group' : '/login';
+    return this.isLoggedIn ? '/dashboard' : '/login';
   }
 
   scrollToSection(id: string): void {

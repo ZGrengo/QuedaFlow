@@ -240,9 +240,11 @@ body {
   color: white;
 }
 
-/* Evitar overflow en contenedores de página */
+/* Evitar overflow horizontal sin crear segundo scroll vertical:
+   overflow-x: hidden + overflow-y: visible hace que overflow-y pase a auto (CSS),
+   duplicando la barra junto al documento. clip evita desbordes X sin ese efecto. */
 .qf-page.container,
 mat-sidenav-content .container {
-  overflow-x: hidden;
+  overflow-x: clip;
   min-width: 0;
 }

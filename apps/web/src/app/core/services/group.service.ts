@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { getSupabaseClient } from '../config/supabase.config';
-import { Observable, from } from 'rxjs';
+import { Observable, from, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 
 export interface Group {
@@ -24,6 +24,11 @@ export interface GroupMember {
   user_id: string;
   role: 'host' | 'member';
   created_at: string;
+}
+
+export interface ProfileDisplay {
+  id: string;
+  display_name: string | null;
 }
 
 export interface CreateGroupDto {
@@ -148,6 +153,26 @@ export class GroupService {
       map(({ data, error }) => {
         if (error) throw error;
         return data as GroupMember[];
+      })
+    );
+  }
+
+  /** Nombres guardados en profiles (p. ej. tras login con Google). RLS: compañeros de grupo. */
+  getMemberDisplayNames(userIds: string[]): Observable<Map<string, string | null>> {
+    const unique = [...new Set(userIds.filter(Boolean))];
+    if (unique.length === 0) {
+      return of(new Map());
+    }
+    return from(
+      this.supabase.from('profiles').select('id, display_name').in('id', unique)
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) throw error;
+        const m = new Map<string, string | null>();
+        for (const row of (data ?? []) as ProfileDisplay[]) {
+          m.set(row.id, row.display_name);
+        }
+        return m;
       })
     );
   }

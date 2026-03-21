@@ -7,7 +7,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { forkJoin } from 'rxjs';
+import { map, switchMap } from 'rxjs/operators';
 import { PlannerService } from '../../../core/services/planner.service';
+import { GroupService, GroupMember } from '../../../core/services/group.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { ComputedSlot } from '@domain/index';
 import { minToHhmm } from '@domain/index';
 
@@ -31,7 +35,7 @@ import { minToHhmm } from '@domain/index';
           Volver al grupo
         </button>
       </div>
-      <mat-card class="qf-surface">
+      <mat-card class="qf-surface planner-main-card">
         <mat-card-header>
           <mat-card-title>Mejores Huecos Disponibles</mat-card-title>
         </mat-card-header>
@@ -49,6 +53,7 @@ import { minToHhmm } from '@domain/index';
             <div
               *ngFor="let slot of topSlots; let i = index"
               class="slot-card"
+              tabindex="0"
               [ngClass]="[
                 'slot-' + slot.color,
                 slot.is_top ? 'slot-card--top' : ''
@@ -91,6 +96,30 @@ import { minToHhmm } from '@domain/index';
                     ⭐ {{ slot.preferred_count }} preferidos
                   </span>
                 </div>
+
+                <p class="slot-hover-hint" *ngIf="groupMembers.length > 0">
+                  <mat-icon inline>groups</mat-icon>
+                  Pasa el ratón o enfoca la tarjeta para ver quién está disponible
+                </p>
+
+                <div class="slot-member-panel" *ngIf="groupMembers.length > 0" (click)="$event.stopPropagation()">
+                  <div class="slot-member-columns">
+                    <div class="slot-member-col slot-member-col--ok">
+                      <div class="slot-member-col-title">Disponibles</div>
+                      <ul>
+                        <li *ngFor="let uid of getAvailableUserIds(slot)">{{ memberLabel(uid) }}</li>
+                        <li *ngIf="getAvailableUserIds(slot).length === 0" class="slot-member-empty">Nadie</li>
+                      </ul>
+                    </div>
+                    <div class="slot-member-col slot-member-col--no">
+                      <div class="slot-member-col-title">No disponibles</div>
+                      <ul>
+                        <li *ngFor="let uid of getUnavailableUserIds(slot)">{{ memberLabel(uid) }}</li>
+                        <li *ngIf="getUnavailableUserIds(slot).length === 0" class="slot-member-empty">Nadie</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -103,6 +132,13 @@ import { minToHhmm } from '@domain/index';
     </div>
   `,
   styles: [`
+    /* La página hace scroll; la tarjeta principal no debe ser otro contenedor con scroll */
+    mat-card.qf-surface.planner-main-card,
+    mat-card.qf-surface.planner-main-card .mat-mdc-card-content {
+      overflow: visible;
+      max-height: none;
+    }
+
     .container {
       padding: 16px;
     }
@@ -169,7 +205,8 @@ import { minToHhmm } from '@domain/index';
       gap: 14px;
       width: 100%;
       box-sizing: border-box;
-      overflow: hidden;
+      position: relative;
+      overflow: visible;
       padding: 18px 20px;
       border-radius: 18px;
       background: var(--qf-surface);
@@ -178,9 +215,11 @@ import { minToHhmm } from '@domain/index';
       transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
     }
 
-    .slot-card:hover {
+    .slot-card:hover,
+    .slot-card:focus-within {
       transform: translateY(-2px);
       box-shadow: var(--qf-shadow);
+      z-index: 2;
     }
 
     .slot-card:active {
@@ -210,7 +249,8 @@ import { minToHhmm } from '@domain/index';
       box-shadow: var(--qf-shadow), 0 0 24px rgba(162, 211, 194, 0.18);
     }
 
-    .slot-card--top:hover {
+    .slot-card--top:hover,
+    .slot-card--top:focus-within {
       transform: translateY(-2px);
       box-shadow: var(--qf-shadow), 0 0 24px rgba(162, 211, 194, 0.18);
     }
@@ -301,6 +341,86 @@ import { minToHhmm } from '@domain/index';
       color: #7a3d16;
     }
 
+    .slot-hover-hint {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 12px 0 0 0;
+      font-size: 0.78rem;
+      color: var(--qf-text-muted, #6b7280);
+    }
+
+    .slot-hover-hint mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
+
+    .slot-member-panel {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc(100% - 4px);
+      margin-top: 4px;
+      padding: 12px 14px;
+      background: var(--qf-surface);
+      border: 1px solid rgba(18, 12, 36, 0.12);
+      border-radius: 12px;
+      box-shadow: var(--qf-shadow);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: translateY(4px);
+      transition: opacity 160ms ease, transform 160ms ease, visibility 160ms;
+      z-index: 5;
+    }
+
+    .slot-card:hover .slot-member-panel,
+    .slot-card:focus-within .slot-member-panel {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    .slot-member-columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .slot-member-col-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 8px;
+      color: #1a1a1e;
+    }
+
+    .slot-member-col--ok .slot-member-col-title {
+      color: #1a4c3f;
+    }
+
+    .slot-member-col--no .slot-member-col-title {
+      color: #8b1a2e;
+    }
+
+    .slot-member-col ul {
+      margin: 0;
+      padding: 0 0 0 16px;
+      font-size: 0.85rem;
+      line-height: 1.45;
+      color: #1a1a1e;
+    }
+
+    .slot-member-empty {
+      list-style: none;
+      margin-left: -16px;
+      color: var(--qf-text-muted, #6b7280);
+      font-style: italic;
+    }
+
     @media (max-width: 600px) {
       .planner-legend {
         gap: 8px;
@@ -336,6 +456,25 @@ import { minToHhmm } from '@domain/index';
         gap: 8px;
         margin-top: 12px;
       }
+
+      .slot-member-columns {
+        grid-template-columns: 1fr;
+      }
+
+      .slot-member-panel {
+        position: static;
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transform: none;
+        margin-top: 12px;
+        box-shadow: none;
+        border-style: dashed;
+      }
+
+      .slot-hover-hint {
+        display: none;
+      }
     }
   `]
 })
@@ -346,11 +485,17 @@ export class PlannerViewComponent implements OnInit {
   error = '';
   minToHhmm = minToHhmm;
   memberCount = 0;
+  groupMembers: GroupMember[] = [];
+  private currentUserId: string | null = null;
+  private memberRoleByUserId = new Map<string, 'host' | 'member'>();
+  private displayNameByUserId = new Map<string, string | null>();
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private plannerService: PlannerService
+    private plannerService: PlannerService,
+    private groupService: GroupService,
+    private authService: AuthService
   ) { }
 
   formatSlotDate(dateISO: string): string {
@@ -372,18 +517,73 @@ export class PlannerViewComponent implements OnInit {
     }
     this.code = code;
 
-    this.plannerService.getTopSlots(code, 20).subscribe({
-      next: (slots) => {
-        this.topSlots = slots;
-        this.memberCount = slots.length > 0 ? (slots[0].total_members ?? 0) : 0;
-        this.loading = false;
-      },
-      error: (err) => {
-        this.error = 'Error al calcular huecos';
-        this.loading = false;
-        console.error(err);
-      }
+    this.authService.getCurrentUser().subscribe(user => {
+      this.currentUserId = user?.id ?? null;
     });
+
+    this.groupService
+      .getGroup(code)
+      .pipe(
+        switchMap(group =>
+          forkJoin({
+            slots: this.plannerService.getTopSlots(code, 20),
+            members: this.groupService.getGroupMembers(group.id)
+          }).pipe(
+            switchMap(({ slots, members }) =>
+              this.groupService.getMemberDisplayNames(members.map(m => m.user_id)).pipe(
+                map(names => ({ slots, members, names }))
+              )
+            )
+          )
+        )
+      )
+      .subscribe({
+        next: ({ slots, members, names }) => {
+          this.topSlots = slots;
+          this.memberCount = slots.length > 0 ? (slots[0].total_members ?? 0) : 0;
+          this.groupMembers = members;
+          this.memberRoleByUserId = new Map(members.map(m => [m.user_id, m.role]));
+          this.displayNameByUserId = names;
+          this.loading = false;
+        },
+        error: (err) => {
+          this.error = 'Error al calcular huecos';
+          this.loading = false;
+          console.error(err);
+        }
+      });
+  }
+
+  getAllMemberUserIds(): string[] {
+    return this.groupMembers.map(m => m.user_id);
+  }
+
+  getAvailableUserIds(slot: ComputedSlot): string[] {
+    const avail = slot.available_members ?? [];
+    return [...avail].sort((a, b) => this.memberLabel(a).localeCompare(this.memberLabel(b), 'es'));
+  }
+
+  getUnavailableUserIds(slot: ComputedSlot): string[] {
+    const availSet = new Set(slot.available_members ?? []);
+    return this.getAllMemberUserIds()
+      .filter(id => !availSet.has(id))
+      .sort((a, b) => this.memberLabel(a).localeCompare(this.memberLabel(b), 'es'));
+  }
+
+  memberLabel(userId: string): string {
+    const role = this.memberRoleByUserId.get(userId);
+    const roleText = role === 'host' ? 'Host' : 'Miembro';
+    const hostSuffix = role === 'host' ? ' (Host)' : '';
+    const dn = this.displayNameByUserId.get(userId)?.trim();
+
+    if (this.currentUserId && userId === this.currentUserId) {
+      if (dn) return `Tú · ${dn}${hostSuffix}`;
+      return `Tú (${roleText})`;
+    }
+    if (dn) return `${dn}${hostSuffix}`;
+
+    const short = userId.replace(/-/g, '').slice(-4).toUpperCase();
+    return `${roleText} · …${short}`;
   }
 
 }

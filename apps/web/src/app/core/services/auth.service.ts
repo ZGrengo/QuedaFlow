@@ -20,15 +20,39 @@ export class AuthService {
     // y que la vista quede desincronizada o los botones dejen de funcionar.
     this.supabase.auth.onAuthStateChange((event, session) => {
       this.ngZone.run(() => {
-        this.currentUserSubject.next(session?.user ?? null);
+        const user = session?.user ?? null;
+        this.currentUserSubject.next(user);
+        void this.syncProfileDisplayName(user);
       });
     });
 
     this.supabase.auth.getSession().then(({ data }) => {
       this.ngZone.run(() => {
-        this.currentUserSubject.next(data.session?.user ?? null);
+        const user = data.session?.user ?? null;
+        this.currentUserSubject.next(user);
+        void this.syncProfileDisplayName(user);
       });
     });
+  }
+
+  /**
+   * Guarda en public.profiles el nombre visible (Google: full_name / name, o email).
+   * Así el planner y otras pantallas pueden mostrar nombres entre compañeros de grupo.
+   */
+  private async syncProfileDisplayName(user: User | null): Promise<void> {
+    if (!user?.id) return;
+    const meta = user.user_metadata as Record<string, string> | undefined;
+    const displayName =
+      (meta?.['full_name'] ?? meta?.['name'] ?? user.email ?? '').trim();
+    if (!displayName) return;
+
+    const { error } = await this.supabase
+      .from('profiles')
+      .upsert({ id: user.id, display_name: displayName }, { onConflict: 'id' });
+
+    if (error) {
+      console.warn('[AuthService] No se pudo sincronizar display_name en profiles', error);
+    }
   }
 
   async signInWithMagicLink(email: string, redirectPath?: string): Promise<void> {
