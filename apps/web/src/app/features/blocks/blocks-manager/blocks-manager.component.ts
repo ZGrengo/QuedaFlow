@@ -23,6 +23,7 @@ import { AvailabilityBlock } from '@domain/index';
 import { minToHhmm, hhmmToMin, timeRangesOverlap } from '@domain/index';
 import { formatDateDDMMYYYY, dateToLocalISOString } from '../../../core/utils/date-format';
 import { TimeInputComponent } from '../../../shared/time-input';
+import { TIMEZONE_DEFAULT, formatGroupTimezoneLabel } from '../../../core/utils/timezone';
 
 @Component({
   selector: 'app-blocks-manager',
@@ -59,6 +60,9 @@ import { TimeInputComponent } from '../../../shared/time-input';
           <mat-card-subtitle>Añade las horas en las que trabajas y otros momentos en los que no estás disponible. Los huecos libres se calcularán automáticamente.</mat-card-subtitle>
         </mat-card-header>
         <mat-card-content>
+          <p class="timezone-hint">
+            Estás introduciendo horarios en la zona del grupo: <strong>{{ groupTimezoneLabel }}</strong>
+          </p>
           <form [formGroup]="blockForm" (ngSubmit)="onSubmit()">
             <div class="form-mode">
               <mat-radio-group formControlName="mode" class="mode-radio-group">
@@ -174,6 +178,15 @@ import { TimeInputComponent } from '../../../shared/time-input';
 
     .form-mode {
       margin-bottom: 16px;
+    }
+
+    .timezone-hint {
+      margin: 0 0 14px 0;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      background: var(--qf-surface-2);
+      font-size: 0.9rem;
     }
 
     .mode-radio-group {
@@ -315,6 +328,7 @@ export class BlocksManagerComponent implements OnInit {
   minDate: Date = new Date();
   maxDate: Date = new Date();
   planningRangeHint = '';
+  groupTimezoneLabel = formatGroupTimezoneLabel(TIMEZONE_DEFAULT);
 
   constructor(
     private route: ActivatedRoute,
@@ -387,6 +401,7 @@ export class BlocksManagerComponent implements OnInit {
     this.groupService.getGroup(code).subscribe({
       next: (group) => {
         this.groupId = group.id;
+        this.groupTimezoneLabel = formatGroupTimezoneLabel(group.timezone);
         this.minDate = new Date(group.planning_start_date);
         this.maxDate = new Date(group.planning_end_date);
         const today = new Date();

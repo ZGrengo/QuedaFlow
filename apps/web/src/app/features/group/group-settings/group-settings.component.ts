@@ -19,6 +19,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { hhmmToMin, minToHhmm, timeRangesOverlap } from '@domain/index';
 import { TimeInputComponent } from '../../../shared/time-input';
 import { dateToLocalISOString } from '../../../core/utils/date-format';
+import { TIMEZONE_DEFAULT, formatGroupTimezoneLabel, isValidTimezone, normalizeGroupTimezone } from '../../../core/utils/timezone';
 
 const DOW_LABELS: Record<number, string> = {
   0: 'Domingo',
@@ -100,6 +101,14 @@ const DOW_LABELS: Record<number, string> = {
               <div class="form-section">
                 <h3>Otros ajustes</h3>
                 <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Zona horaria del grupo</mat-label>
+                    <input matInput formControlName="timezone" placeholder="Europe/Madrid">
+                    <mat-hint>Todas las horas del planner se interpretan en esta zona.</mat-hint>
+                    <mat-hint *ngIf="isTimezoneInputInvalid()" class="planning-error">
+                      Zona horaria no reconocida. Al guardar se aplicará {{ defaultTimezone }}.
+                    </mat-hint>
+                  </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>Buffer (mins)</mat-label>
                     <input matInput type="number" formControlName="buffer_before_work_min" min="0" max="120">
@@ -253,6 +262,8 @@ const DOW_LABELS: Record<number, string> = {
 export class GroupSettingsComponent implements OnInit {
   code = '';
   group: Group | null = null;
+  groupTimezoneLabel = formatGroupTimezoneLabel(TIMEZONE_DEFAULT);
+  defaultTimezone = TIMEZONE_DEFAULT;
   isHost = false;
   saving = false;
   blockedWindows: Array<{ id?: string; start_min: number; end_min: number; dow: number | null }> = [];
@@ -300,7 +311,8 @@ export class GroupSettingsComponent implements OnInit {
       buffer_before_work_min: [20, [Validators.required, Validators.min(0), Validators.max(120)]],
       yellow_threshold: [0.75, [Validators.required, Validators.min(0), Validators.max(1)]],
       target_people: [null, [Validators.min(1)]],
-      min_meeting_duration_min: [60, [Validators.required, Validators.min(15), Validators.max(480)]]
+      min_meeting_duration_min: [60, [Validators.required, Validators.min(15), Validators.max(480)]],
+      timezone: [TIMEZONE_DEFAULT, [Validators.required]]
     }, { validators: this.planningRangeValidator });
 
     this.windowForm = this.fb.group({
@@ -325,6 +337,11 @@ export class GroupSettingsComponent implements OnInit {
       return { planningRange: true };
     }
     return null;
+  }
+
+  isTimezoneInputInvalid(): boolean {
+    const value = String(this.settingsForm.get('timezone')?.value ?? '').trim();
+    return !!value && !isValidTimezone(value);
   }
 
   ngOnInit() {
@@ -352,8 +369,10 @@ export class GroupSettingsComponent implements OnInit {
           buffer_before_work_min: group.buffer_before_work_min,
           yellow_threshold: group.yellow_threshold,
           target_people: group.target_people,
-          min_meeting_duration_min: group.min_meeting_duration_min
+          min_meeting_duration_min: group.min_meeting_duration_min,
+          timezone: group.timezone || TIMEZONE_DEFAULT
         });
+        this.groupTimezoneLabel = formatGroupTimezoneLabel(group.timezone);
         this.loadBlockedWindows();
       },
       error: () => this.router.navigate(['/dashboard'])
@@ -382,9 +401,17 @@ export class GroupSettingsComponent implements OnInit {
         ? v.planning_end_date
         : dateToLocalISOString(new Date(v.planning_end_date))
     };
+    if (!isValidTimezone(payload.timezone)) {
+      payload.timezone = TIMEZONE_DEFAULT;
+      this.notification.error(`Zona horaria inválida. Se usará ${TIMEZONE_DEFAULT}.`);
+    } else {
+      payload.timezone = normalizeGroupTimezone(payload.timezone);
+    }
     this.groupService.updateSettings(this.group.id, payload).subscribe({
       next: (updated) => {
         this.group = updated;
+        this.groupTimezoneLabel = formatGroupTimezoneLabel(updated.timezone);
+        this.settingsForm.patchValue({ timezone: this.groupTimezoneLabel }, { emitEvent: false });
         this.saving = false;
         this.notification.success('Configuración guardada', 2000);
       },

@@ -16,6 +16,7 @@ import { ShiftEditorComponent } from './components/shift-editor.component';
 import { DetectedShift, ParseIssue } from '@domain/index';
 import { formatDateDDMMYYYY, dateToLocalISOString } from '../../core/utils/date-format';
 import { minToHhmm } from '@domain/index';
+import { TIMEZONE_DEFAULT, formatGroupTimezoneLabel } from '../../core/utils/timezone';
 
 type Step = 'upload' | 'results' | 'saving';
 
@@ -49,6 +50,10 @@ type Step = 'upload' | 'results' | 'saving';
           <mat-card-subtitle>Sube una o varias capturas de tu app de horarios y el sistema detectará los turnos automáticamente</mat-card-subtitle>
         </mat-card-header>
         <mat-card-content>
+          <div class="timezone-notice">
+            Estás importando y guardando horarios en la zona del grupo: <strong>{{ groupTimezoneLabel }}</strong>.
+          </div>
+
           <!-- Step 1: Upload -->
           <div *ngIf="currentStep === 'upload'">
             <form [formGroup]="uploadForm" (ngSubmit)="onFileSelected()">
@@ -152,6 +157,15 @@ type Step = 'upload' | 'results' | 'saving';
 
     .file-info {
       margin-top: 16px;
+    }
+
+    .timezone-notice {
+      margin: 0 0 14px 0;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      background: var(--qf-surface-2);
+      font-size: 0.9rem;
     }
 
     .file-count {
@@ -279,6 +293,7 @@ export class ImportOcrPageComponent implements OnInit, OnDestroy {
   minDate = new Date();
   maxDate = new Date();
   formatDateDDMMYYYY = formatDateDDMMYYYY;
+  groupTimezoneLabel = formatGroupTimezoneLabel(TIMEZONE_DEFAULT);
 
   uploadForm: FormGroup;
   private ocrCancelToken: { cancel: () => void } | null = null;
@@ -311,6 +326,7 @@ export class ImportOcrPageComponent implements OnInit, OnDestroy {
     this.groupService.getGroup(this.code).subscribe({
       next: (group: Group) => {
         this.group = group;
+        this.groupTimezoneLabel = formatGroupTimezoneLabel(group.timezone);
         this.minDate = new Date(group.planning_start_date);
         this.maxDate = new Date(group.planning_end_date);
         const today = new Date();

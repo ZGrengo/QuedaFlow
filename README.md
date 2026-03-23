@@ -116,6 +116,8 @@ En Supabase Dashboard:
     - `011_limit_max_groups_per_user.sql`
     - `012_group_notification_sent_at.sql`
     - `013_grant_service_role_public_schema.sql`
+    - `014_profiles_display_name.sql`
+    - `015_group_and_profile_timezone.sql`
 
 O usando Supabase CLI:
 
@@ -167,6 +169,13 @@ O en el Dashboard: Project Settings → Edge Functions → Secrets.
 - **group_members**: Usuarios ven miembros de sus grupos
 - **availability_blocks**: Usuarios insertan/modifican solo sus propios bloques; fecha debe estar en rango planning y no en pasado
 - **group_blocked_windows**: Solo host puede gestionar ventanas bloqueadas
+
+## Timezone (v1)
+
+- Cada grupo tiene una zona horaria oficial (`groups.timezone`, default `Europe/Madrid`).
+- Los horarios (`date`, `start_min`, `end_min`) se siguen interpretando en la zona del grupo.
+- La app detecta la zona del usuario y la guarda en `profiles.timezone` (con fallback local).
+- **Estado actual**: no hay conversión automática por usuario en planner/UI; esa iteración llegará después.
 
 ## Decisiones Técnicas
 

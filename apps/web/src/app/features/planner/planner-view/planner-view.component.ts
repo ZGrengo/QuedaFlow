@@ -10,10 +10,11 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { forkJoin } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import { PlannerService } from '../../../core/services/planner.service';
-import { GroupService, GroupMember } from '../../../core/services/group.service';
+import { Group, GroupService, GroupMember } from '../../../core/services/group.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { ComputedSlot } from '@domain/index';
 import { minToHhmm } from '@domain/index';
+import { formatCalendarDateEs, formatGroupTimezoneLabel, getStoredUserTimezone, isDifferentTimezone } from '../../../core/utils/timezone';
 
 @Component({
   selector: 'app-planner-view',
@@ -40,6 +41,14 @@ import { minToHhmm } from '@domain/index';
           <mat-card-title>Mejores Huecos Disponibles</mat-card-title>
         </mat-card-header>
         <mat-card-content>
+          <div *ngIf="groupTimezoneLabel" class="timezone-banner">
+            <p><strong>Horario del grupo:</strong> {{ groupTimezoneLabel }}</p>
+            <p *ngIf="showDifferentUserTimezone">
+              <strong>Tu zona horaria detectada:</strong> {{ userTimezoneLabel }}.
+              Por ahora los horarios se muestran en la zona del grupo.
+            </p>
+          </div>
+
           <div *ngIf="loading" class="loading">Calculando huecos...</div>
           <div *ngIf="error" class="error">{{ error }}</div>
 
@@ -158,6 +167,21 @@ import { minToHhmm } from '@domain/index';
 
     .error {
       color: var(--qf-primary);
+    }
+
+    .timezone-banner {
+      margin: 8px 0 16px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: var(--qf-surface-2);
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      font-size: 0.9rem;
+    }
+    .timezone-banner p {
+      margin: 0;
+    }
+    .timezone-banner p + p {
+      margin-top: 6px;
     }
 
     .planner-legend {
@@ -480,6 +504,7 @@ import { minToHhmm } from '@domain/index';
 })
 export class PlannerViewComponent implements OnInit {
   code = '';
+  group: Group | null = null;
   topSlots: ComputedSlot[] = [];
   loading = true;
   error = '';
@@ -487,6 +512,9 @@ export class PlannerViewComponent implements OnInit {
   memberCount = 0;
   groupMembers: GroupMember[] = [];
   private currentUserId: string | null = null;
+  groupTimezoneLabel = '';
+  userTimezoneLabel = '';
+  showDifferentUserTimezone = false;
   private memberRoleByUserId = new Map<string, 'host' | 'member'>();
   private displayNameByUserId = new Map<string, string | null>();
 
@@ -500,13 +528,8 @@ export class PlannerViewComponent implements OnInit {
 
   formatSlotDate(dateISO: string): string {
     if (!dateISO) return '';
-    const d = new Date(dateISO + 'T00:00:00');
-    const formatted = new Intl.DateTimeFormat('es-ES', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'short'
-    }).format(d);
-    return formatted.toUpperCase();
+    // Calendar date (group date), not a runtime-local timestamp conversion.
+    return formatCalendarDateEs(dateISO).toUpperCase();
   }
 
   ngOnInit() {
@@ -520,11 +543,16 @@ export class PlannerViewComponent implements OnInit {
     this.authService.getCurrentUser().subscribe(user => {
       this.currentUserId = user?.id ?? null;
     });
+    this.userTimezoneLabel = getStoredUserTimezone();
 
     this.groupService
       .getGroup(code)
       .pipe(
-        switchMap(group =>
+        switchMap(group => {
+          this.group = group;
+          this.groupTimezoneLabel = formatGroupTimezoneLabel(group.timezone);
+          this.showDifferentUserTimezone = isDifferentTimezone(group.timezone, this.userTimezoneLabel);
+          return (
           forkJoin({
             slots: this.plannerService.getTopSlots(code, 20),
             members: this.groupService.getGroupMembers(group.id)
@@ -535,10 +563,12 @@ export class PlannerViewComponent implements OnInit {
               )
             )
           )
-        )
+          );
+        })
       )
       .subscribe({
-        next: ({ slots, members, names }) => {
+        next: (result: { slots: ComputedSlot[]; members: GroupMember[]; names: Map<string, string | null> }) => {
+          const { slots, members, names } = result;
           this.topSlots = slots;
           this.memberCount = slots.length > 0 ? (slots[0].total_members ?? 0) : 0;
           this.groupMembers = members;

@@ -31,6 +31,18 @@ interface Payload {
   slots: SlotPayload[];
 }
 
+function formatCalendarDateEs(dateISO: string): string {
+  const [y, m, d] = dateISO.split('-').map((v) => Number(v));
+  if (!y || !m || !d) return dateISO;
+  const dateUtc = new Date(Date.UTC(y, m - 1, d));
+  return new Intl.DateTimeFormat('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC'
+  }).format(dateUtc);
+}
+
 serve(async (req) => {
   const corsHeaders = buildCorsHeaders(req);
 
@@ -169,16 +181,10 @@ serve(async (req) => {
       return `${h}:${m}`;
     };
 
-    const formatter = new Intl.DateTimeFormat('es-ES', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'short'
-    });
-
     const slotLines = slots
       .map((s) => {
-        const dateObj = new Date(s.date + 'T00:00:00');
-        const dateLabel = formatter.format(dateObj);
+        // Group calendar date (YYYY-MM-DD), timezone-independent rendering.
+        const dateLabel = formatCalendarDateEs(s.date);
         const available = s.available_count ?? 0;
         const total = s.total_members ?? 0;
         const pct = Math.round(s.pct_available * 100);
@@ -211,6 +217,9 @@ serve(async (req) => {
         <h1 style="font-size:20px;margin-bottom:8px;">${group.name}</h1>
         <p style="margin:0 0 12px 0;">Se ha alcanzado el mínimo de <strong>${targetPeople}</strong> personas disponibles para tu actividad.</p>
         <p style="margin:0 0 16px 0;">Estos son los mejores horarios detectados:</p>
+        <p style="margin:0 0 12px 0;color:#374151;">
+          Todos los horarios se muestran en la zona horaria del grupo: <strong>${group.timezone ?? 'Europe/Madrid'}</strong>.
+        </p>
         <table style="width:100%;max-width:480px;border-collapse:collapse;">
           ${slotLines}
         </table>

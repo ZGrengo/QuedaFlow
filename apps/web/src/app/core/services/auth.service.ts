@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { getSupabaseClient } from '../config/supabase.config';
 import { User } from '@supabase/supabase-js';
+import { getBrowserTimezone, setStoredUserTimezone } from '../utils/timezone';
 
 @Injectable({
   providedIn: 'root'
@@ -40,15 +41,18 @@ export class AuthService {
    * Así el planner y otras pantallas pueden mostrar nombres entre compañeros de grupo.
    */
   private async syncProfileDisplayName(user: User | null): Promise<void> {
+    const detectedTimezone = setStoredUserTimezone(getBrowserTimezone());
     if (!user?.id) return;
     const meta = user.user_metadata as Record<string, string> | undefined;
     const displayName =
       (meta?.['full_name'] ?? meta?.['name'] ?? user.email ?? '').trim();
-    if (!displayName) return;
 
     const { error } = await this.supabase
       .from('profiles')
-      .upsert({ id: user.id, display_name: displayName }, { onConflict: 'id' });
+      .upsert(
+        { id: user.id, display_name: displayName || null, timezone: detectedTimezone },
+        { onConflict: 'id' }
+      );
 
     if (error) {
       console.warn('[AuthService] No se pudo sincronizar display_name en profiles', error);
