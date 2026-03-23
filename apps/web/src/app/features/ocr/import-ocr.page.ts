@@ -17,6 +17,7 @@ import { DetectedShift, ParseIssue } from '@domain/index';
 import { formatDateDDMMYYYY, dateToLocalISOString } from '../../core/utils/date-format';
 import { minToHhmm } from '@domain/index';
 import { TIMEZONE_DEFAULT, formatGroupTimezoneLabel } from '../../core/utils/timezone';
+import { TimezoneService } from '../../core/services/timezone.service';
 
 type Step = 'upload' | 'results' | 'saving';
 
@@ -52,6 +53,9 @@ type Step = 'upload' | 'results' | 'saving';
         <mat-card-content>
           <div class="timezone-notice">
             Estás importando y guardando horarios en la zona del grupo: <strong>{{ groupTimezoneLabel }}</strong>.
+          </div>
+          <div *ngIf="showDifferentUserTimezone" class="timezone-notice timezone-notice--secondary">
+            Tu zona local es <strong>{{ userTimezoneLabel }}</strong>.
           </div>
 
           <!-- Step 1: Upload -->
@@ -166,6 +170,9 @@ type Step = 'upload' | 'results' | 'saving';
       border: 1px solid rgba(0, 0, 0, 0.1);
       background: var(--qf-surface-2);
       font-size: 0.9rem;
+    }
+    .timezone-notice--secondary {
+      margin-top: -4px;
     }
 
     .file-count {
@@ -294,6 +301,8 @@ export class ImportOcrPageComponent implements OnInit, OnDestroy {
   maxDate = new Date();
   formatDateDDMMYYYY = formatDateDDMMYYYY;
   groupTimezoneLabel = formatGroupTimezoneLabel(TIMEZONE_DEFAULT);
+  userTimezoneLabel = '';
+  showDifferentUserTimezone = false;
 
   uploadForm: FormGroup;
   private ocrCancelToken: { cancel: () => void } | null = null;
@@ -305,6 +314,7 @@ export class ImportOcrPageComponent implements OnInit, OnDestroy {
     private fb: FormBuilder,
     private groupService: GroupService,
     private blocksService: BlocksService,
+    private timezoneService: TimezoneService,
     private ocrService: ImportOcrService,
     private notification: NotificationService
   ) {
@@ -326,7 +336,9 @@ export class ImportOcrPageComponent implements OnInit, OnDestroy {
     this.groupService.getGroup(this.code).subscribe({
       next: (group: Group) => {
         this.group = group;
-        this.groupTimezoneLabel = formatGroupTimezoneLabel(group.timezone);
+        this.groupTimezoneLabel = this.timezoneService.groupTimezone(group);
+        this.userTimezoneLabel = this.timezoneService.userTimezone();
+        this.showDifferentUserTimezone = this.timezoneService.isDifferent(group.timezone, this.userTimezoneLabel);
         this.minDate = new Date(group.planning_start_date);
         this.maxDate = new Date(group.planning_end_date);
         const today = new Date();

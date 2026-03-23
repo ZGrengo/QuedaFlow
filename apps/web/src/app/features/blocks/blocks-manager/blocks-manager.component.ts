@@ -24,6 +24,7 @@ import { minToHhmm, hhmmToMin, timeRangesOverlap } from '@domain/index';
 import { formatDateDDMMYYYY, dateToLocalISOString } from '../../../core/utils/date-format';
 import { TimeInputComponent } from '../../../shared/time-input';
 import { TIMEZONE_DEFAULT, formatGroupTimezoneLabel } from '../../../core/utils/timezone';
+import { TimezoneService } from '../../../core/services/timezone.service';
 
 @Component({
   selector: 'app-blocks-manager',
@@ -62,6 +63,9 @@ import { TIMEZONE_DEFAULT, formatGroupTimezoneLabel } from '../../../core/utils/
         <mat-card-content>
           <p class="timezone-hint">
             Estás introduciendo horarios en la zona del grupo: <strong>{{ groupTimezoneLabel }}</strong>
+          </p>
+          <p *ngIf="showDifferentUserTimezone" class="timezone-hint timezone-hint--secondary">
+            Tu zona local es <strong>{{ userTimezoneLabel }}</strong>.
           </p>
           <form [formGroup]="blockForm" (ngSubmit)="onSubmit()">
             <div class="form-mode">
@@ -187,6 +191,9 @@ import { TIMEZONE_DEFAULT, formatGroupTimezoneLabel } from '../../../core/utils/
       border: 1px solid rgba(0, 0, 0, 0.1);
       background: var(--qf-surface-2);
       font-size: 0.9rem;
+    }
+    .timezone-hint--secondary {
+      margin-top: -4px;
     }
 
     .mode-radio-group {
@@ -329,6 +336,8 @@ export class BlocksManagerComponent implements OnInit {
   maxDate: Date = new Date();
   planningRangeHint = '';
   groupTimezoneLabel = formatGroupTimezoneLabel(TIMEZONE_DEFAULT);
+  userTimezoneLabel = '';
+  showDifferentUserTimezone = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -337,6 +346,7 @@ export class BlocksManagerComponent implements OnInit {
     private blocksService: BlocksService,
     private groupService: GroupService,
     private authService: AuthService,
+    private timezoneService: TimezoneService,
     private notification: NotificationService,
     private dialog: MatDialog
   ) {
@@ -401,7 +411,9 @@ export class BlocksManagerComponent implements OnInit {
     this.groupService.getGroup(code).subscribe({
       next: (group) => {
         this.groupId = group.id;
-        this.groupTimezoneLabel = formatGroupTimezoneLabel(group.timezone);
+        this.groupTimezoneLabel = this.timezoneService.groupTimezone(group);
+        this.userTimezoneLabel = this.timezoneService.userTimezone();
+        this.showDifferentUserTimezone = this.timezoneService.isDifferent(group.timezone, this.userTimezoneLabel);
         this.minDate = new Date(group.planning_start_date);
         this.maxDate = new Date(group.planning_end_date);
         const today = new Date();

@@ -13,8 +13,9 @@ import { PlannerService } from '../../../core/services/planner.service';
 import { Group, GroupService, GroupMember } from '../../../core/services/group.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { ComputedSlot } from '@domain/index';
-import { minToHhmm } from '@domain/index';
-import { formatCalendarDateEs, formatGroupTimezoneLabel, getStoredUserTimezone, isDifferentTimezone } from '../../../core/utils/timezone';
+import { formatCalendarDateEs } from '../../../core/utils/timezone';
+import { TimezoneService } from '../../../core/services/timezone.service';
+import { LocalRangeDayInfo } from '../../../core/utils/timezone-conversion';
 
 @Component({
   selector: 'app-planner-view',
@@ -73,7 +74,15 @@ import { formatCalendarDateEs, formatGroupTimezoneLabel, getStoredUserTimezone, 
                 <div class="slot-header">
                   <div class="slot-header-main">
                     <div class="slot-title">{{ formatSlotDate(slot.date) }}</div>
-                    <div class="slot-time">{{ minToHhmm(slot.start_min) }} – {{ minToHhmm(slot.end_min) }}</div>
+                    <div class="slot-time">
+                      <span class="slot-time-label">Hora del grupo</span>
+                      <span>{{ formatGroupSlotTime(slot) }}</span>
+                    </div>
+                    <div *ngIf="showDifferentUserTimezone" class="slot-time slot-time--user">
+                      <span class="slot-time-label">Tu hora</span>
+                      <span>{{ localTimePrefix(slot) }}{{ formatUserSlotTime(slot) }}</span>
+                      <span *ngIf="userDayOffsetBadge(slot)" class="tz-day-badge">({{ userDayOffsetBadge(slot) }})</span>
+                    </div>
                   </div>
                   <div class="slot-top-badge" *ngIf="slot.is_top">
                     <mat-icon>emoji_events</mat-icon>
@@ -312,6 +321,34 @@ import { formatCalendarDateEs, formatGroupTimezoneLabel, getStoredUserTimezone, 
       font-weight: 600;
       margin-top: 4px;
       letter-spacing: 0.02em;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .slot-time-label {
+      font-size: 0.75rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--qf-text-muted, #6b7280);
+      font-weight: 700;
+    }
+
+    .slot-time--user {
+      font-size: 0.95rem;
+    }
+
+    .tz-day-badge {
+      font-size: 0.75rem;
+      line-height: 1.2;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(255, 210, 54, 0.22);
+      color: #6b5200;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
     }
 
     .slot-top-badge {
@@ -508,7 +545,6 @@ export class PlannerViewComponent implements OnInit {
   topSlots: ComputedSlot[] = [];
   loading = true;
   error = '';
-  minToHhmm = minToHhmm;
   memberCount = 0;
   groupMembers: GroupMember[] = [];
   private currentUserId: string | null = null;
@@ -523,7 +559,8 @@ export class PlannerViewComponent implements OnInit {
     private router: Router,
     private plannerService: PlannerService,
     private groupService: GroupService,
-    private authService: AuthService
+    private authService: AuthService,
+    private timezoneService: TimezoneService
   ) { }
 
   formatSlotDate(dateISO: string): string {
@@ -543,15 +580,15 @@ export class PlannerViewComponent implements OnInit {
     this.authService.getCurrentUser().subscribe(user => {
       this.currentUserId = user?.id ?? null;
     });
-    this.userTimezoneLabel = getStoredUserTimezone();
+    this.userTimezoneLabel = this.timezoneService.userTimezone();
 
     this.groupService
       .getGroup(code)
       .pipe(
         switchMap(group => {
           this.group = group;
-          this.groupTimezoneLabel = formatGroupTimezoneLabel(group.timezone);
-          this.showDifferentUserTimezone = isDifferentTimezone(group.timezone, this.userTimezoneLabel);
+          this.groupTimezoneLabel = this.timezoneService.groupTimezone(group);
+          this.showDifferentUserTimezone = this.timezoneService.isDifferent(group.timezone, this.userTimezoneLabel);
           return (
           forkJoin({
             slots: this.plannerService.getTopSlots(code, 20),
@@ -614,6 +651,35 @@ export class PlannerViewComponent implements OnInit {
 
     const short = userId.replace(/-/g, '').slice(-4).toUpperCase();
     return `${roleText} · …${short}`;
+  }
+
+  formatGroupSlotTime(slot: ComputedSlot): string {
+    const tz = this.group?.timezone ?? this.groupTimezoneLabel;
+    return this.timezoneService.formatGroupTimeRange(slot.date, slot.start_min, slot.end_min, tz);
+  }
+
+  formatUserSlotTime(slot: ComputedSlot): string {
+    return this.userLocalInfo(slot).formattedRange;
+  }
+
+  localTimePrefix(slot: ComputedSlot): string {
+    const label = this.userLocalInfo(slot).localDayLabel;
+    return label ? `${label} ` : '';
+  }
+
+  userDayOffsetBadge(slot: ComputedSlot): string | null {
+    return this.userLocalInfo(slot).dayOffsetBadge;
+  }
+
+  private userLocalInfo(slot: ComputedSlot): LocalRangeDayInfo {
+    const tz = this.group?.timezone ?? this.groupTimezoneLabel;
+    return this.timezoneService.formatUserLocalTimeRangeWithDayInfo(
+      slot.date,
+      slot.start_min,
+      slot.end_min,
+      tz,
+      this.userTimezoneLabel
+    );
   }
 
 }
