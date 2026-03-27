@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { Observable, combineLatest, defer, from, of } from 'rxjs';
-import { catchError, finalize, map, shareReplay, switchMap } from 'rxjs/operators';
+import { Observable, combineLatest, defer, from, of, throwError } from 'rxjs';
+import { finalize, map, shareReplay, switchMap, take } from 'rxjs/operators';
 import { GroupService, Group } from './group.service';
 import { GroupMember as DomainGroupMember } from '@domain/index';
 import { BlocksService } from './blocks.service';
@@ -96,6 +96,39 @@ export class PlannerService {
     private blocksService: BlocksService
   ) { }
 
+  /**
+   * Envía por correo los 3 mejores huecos a todos los miembros con email (solo invocable desde UI host).
+   * No comprueba umbral de disponibilidad: el host decide cuándo avisar.
+   */
+  sendTopSlotsEmailToMembers(groupCode: string): Observable<void> {
+    return this.groupService.getGroup(groupCode).pipe(
+      take(1),
+      switchMap((group) => {
+        if (group.target_people == null) {
+          return throwError(
+            () => new Error('Configura el mínimo de personas en la configuración del grupo antes de enviar el correo.')
+          );
+        }
+        const targetPeople = group.target_people;
+        return this.computeGroupSlots(groupCode).pipe(
+          take(1),
+          switchMap((slots) => {
+            const ranked = rankSlots(slots, 20);
+            const top3 = ranked.slice(0, 3);
+            if (top3.length === 0) {
+              return throwError(() => new Error('No hay huecos calculados para incluir en el correo.'));
+            }
+            return this.invokeNotifyTopSlots({
+              groupId: group.id,
+              targetPeople,
+              slots: top3
+            });
+          })
+        );
+      })
+    );
+  }
+
   private invokeNotifyTopSlots(payload: { groupId: string; targetPeople: number; slots: ComputedSlot[] }): Observable<void> {
     const existing = this.notifyInFlightByGroupId.get(payload.groupId);
     if (existing) return existing;
@@ -183,29 +216,10 @@ export class PlannerService {
           this.computeGroupSlots(groupCode),
           this.groupService.getGroupMembers(group.id)
         ]).pipe(
-          switchMap(([slots, members]) => {
+          switchMap(([slots]) => {
             const ranked = rankSlots(slots, topN);
-            const shouldNotify =
-              group.target_people != null &&
-              group.notification_sent_at == null &&
-              ranked.some(s => (s.available_count ?? s.available_members.length) >= (group.target_people as number));
-
-            if (!shouldNotify) {
-              return from([ranked]);
-            }
-
-            const top3 = ranked.slice(0, 3);
-            return this.invokeNotifyTopSlots({
-              groupId: group.id,
-              targetPeople: group.target_people as number,
-              slots: top3
-            }).pipe(
-              map(() => ranked),
-              catchError((err) => {
-                console.error('Error al notificar top slots', err);
-                return of(ranked);
-              })
-            );
+            // El envío de correo cuando hay suficiente disponibilidad está desactivado: solo el host puede enviarlo desde el planner.
+            return of(ranked);
           })
         )
       )

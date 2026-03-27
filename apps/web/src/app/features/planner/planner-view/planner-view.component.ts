@@ -15,6 +15,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { ComputedSlot } from '@domain/index';
 import { formatCalendarDateEs } from '../../../core/utils/timezone';
 import { TimezoneService } from '../../../core/services/timezone.service';
+import { NotificationService } from '../../../core/services/notification.service';
 import { LocalRangeDayInfo } from '../../../core/utils/timezone-conversion';
 
 @Component({
@@ -42,6 +43,26 @@ import { LocalRangeDayInfo } from '../../../core/utils/timezone-conversion';
           <mat-card-title>Mejores Huecos Disponibles</mat-card-title>
         </mat-card-header>
         <mat-card-content>
+          <div *ngIf="isHost && !loading" class="planner-host-email">
+            <button
+              mat-raised-button
+              class="qf-btn-accent email-members-btn"
+              type="button"
+              (click)="onSendTopSlotsEmail()"
+              [disabled]="emailSending || !canSendTopSlotsEmail"
+              matTooltip="Se envía un correo a los miembros con email (Brevo). Incluye los 3 mejores huecos actuales."
+            >
+              <mat-icon>mail</mat-icon>
+              {{ emailSending ? 'Enviando…' : 'Enviar correo a los miembros' }}
+            </button>
+            <p *ngIf="group && group.target_people == null" class="email-hint email-hint--warn">
+              Define el mínimo de personas en la configuración del grupo para poder enviar el correo.
+            </p>
+            <p *ngIf="group && group.target_people != null && !loading && topSlots.length === 0" class="email-hint">
+              Cuando haya huecos calculados podrás enviar el resumen por correo.
+            </p>
+          </div>
+
           <div *ngIf="groupTimezoneLabel" class="timezone-banner">
             <p><strong>Horario del grupo:</strong> {{ groupTimezoneLabel }}</p>
             <p *ngIf="showDifferentUserTimezone">
@@ -191,6 +212,48 @@ import { LocalRangeDayInfo } from '../../../core/utils/timezone-conversion';
     }
     .timezone-banner p + p {
       margin-top: 6px;
+    }
+
+    .planner-host-email {
+      margin-bottom: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .email-members-btn.mat-mdc-raised-button {
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      box-shadow: 0 2px 8px rgba(18, 12, 36, 0.12);
+    }
+
+    .email-members-btn.mat-mdc-raised-button:not(:disabled) {
+      /* refuerzo por si el tema Material aclara el contraste */
+      color: #fff !important;
+    }
+
+    .email-members-btn.mat-mdc-raised-button:disabled {
+      opacity: 0.55;
+    }
+
+    .email-members-btn mat-icon {
+      margin-right: 6px;
+      vertical-align: middle;
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+
+    .email-hint {
+      margin: 0;
+      font-size: 0.8rem;
+      color: var(--qf-text-muted);
+      max-width: 520px;
+    }
+
+    .email-hint--warn {
+      color: #6b5200;
     }
 
     .planner-legend {
@@ -551,8 +614,14 @@ export class PlannerViewComponent implements OnInit {
   groupTimezoneLabel = '';
   userTimezoneLabel = '';
   showDifferentUserTimezone = false;
+  isHost = false;
+  emailSending = false;
   private memberRoleByUserId = new Map<string, 'host' | 'member'>();
   private displayNameByUserId = new Map<string, string | null>();
+
+  get canSendTopSlotsEmail(): boolean {
+    return !!this.group?.target_people && this.topSlots.length > 0;
+  }
 
   constructor(
     private route: ActivatedRoute,
@@ -560,7 +629,8 @@ export class PlannerViewComponent implements OnInit {
     private plannerService: PlannerService,
     private groupService: GroupService,
     private authService: AuthService,
-    private timezoneService: TimezoneService
+    private timezoneService: TimezoneService,
+    private notification: NotificationService
   ) { }
 
   formatSlotDate(dateISO: string): string {
@@ -579,6 +649,7 @@ export class PlannerViewComponent implements OnInit {
 
     this.authService.getCurrentUser().subscribe(user => {
       this.currentUserId = user?.id ?? null;
+      this.refreshIsHost();
     });
     this.userTimezoneLabel = this.timezoneService.userTimezone();
 
@@ -587,6 +658,7 @@ export class PlannerViewComponent implements OnInit {
       .pipe(
         switchMap(group => {
           this.group = group;
+          this.refreshIsHost();
           this.groupTimezoneLabel = this.timezoneService.groupTimezone(group);
           this.showDifferentUserTimezone = this.timezoneService.isDifferent(group.timezone, this.userTimezoneLabel);
           return (
@@ -619,6 +691,34 @@ export class PlannerViewComponent implements OnInit {
           console.error(err);
         }
       });
+  }
+
+  private refreshIsHost(): void {
+    this.isHost = !!this.currentUserId && !!this.group && this.currentUserId === this.group.host_user_id;
+  }
+
+  onSendTopSlotsEmail(): void {
+    if (!this.isHost || !this.canSendTopSlotsEmail || this.emailSending) return;
+    this.emailSending = true;
+    this.plannerService.sendTopSlotsEmailToMembers(this.code).subscribe({
+      next: () => {
+        this.emailSending = false;
+        this.notification.success('Correo enviado a los miembros', 3500);
+        this.groupService.getGroup(this.code).subscribe({
+          next: (g) => {
+            this.group = g;
+            this.refreshIsHost();
+          },
+          error: () => {}
+        });
+      },
+      error: (err: unknown) => {
+        this.emailSending = false;
+        const msg = err instanceof Error ? err.message : 'No se pudo enviar el correo';
+        this.notification.error(msg, 'Cerrar', 6000);
+        console.error(err);
+      }
+    });
   }
 
   getAllMemberUserIds(): string[] {

@@ -121,7 +121,7 @@ serve(async (req) => {
 
     const { data: membership, error: membershipError } = await supabase
       .from('group_members')
-      .select('id')
+      .select('id, role')
       .eq('group_id', groupId)
       .eq('user_id', user.id)
       .maybeSingle();
@@ -133,9 +133,9 @@ serve(async (req) => {
       });
     }
 
-    if (group.notification_sent_at) {
-      return new Response(JSON.stringify({ message: 'Notification already sent' }), {
-        status: 200,
+    if (membership.role !== 'host') {
+      return new Response(JSON.stringify({ error: 'Forbidden', detail: 'Solo el host puede enviar el correo del planner' }), {
+        status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
@@ -210,13 +210,13 @@ serve(async (req) => {
       })
       .join('');
 
-    const subject = '🎉 Ya hay suficientes personas para tu actividad';
+    const subject = `📅 Mejores horarios — ${group.name}`;
 
     const html = `
       <div style="font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#111827;">
         <h1 style="font-size:20px;margin-bottom:8px;">${group.name}</h1>
-        <p style="margin:0 0 12px 0;">Se ha alcanzado el mínimo de <strong>${targetPeople}</strong> personas disponibles para tu actividad.</p>
-        <p style="margin:0 0 16px 0;">Estos son los mejores horarios detectados:</p>
+        <p style="margin:0 0 12px 0;">El host del grupo comparte los mejores huecos detectados en el planner. Objetivo acordado de mínimo de personas con disponibilidad: <strong>${targetPeople}</strong>.</p>
+        <p style="margin:0 0 16px 0;">Propuesta de horarios:</p>
         <p style="margin:0 0 12px 0;color:#374151;">
           Todos los horarios se muestran en la zona horaria del grupo: <strong>${group.timezone ?? 'Europe/Madrid'}</strong>.
         </p>
@@ -224,7 +224,7 @@ serve(async (req) => {
           ${slotLines}
         </table>
         <p style="margin-top:16px;font-size:12px;color:#6b7280;">
-          Este mensaje se ha enviado automáticamente cuando se ha alcanzado el mínimo de personas disponibles.
+          Mensaje enviado desde QuedaFlow a solicitud del host del grupo.
         </p>
       </div>
     `;
