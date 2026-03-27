@@ -8,16 +8,28 @@ import {
 import { overlaps } from './time';
 import { splitMidnightBlock, applyBuffer } from './blocks';
 
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
 /**
- * Genera fechas entre start y end (inclusive)
+ * Genera fechas entre start y end (inclusive).
+ * Usa aritmética de calendario en UTC para que YYYY-MM-DD no cambie de día según el timezone del runtime.
  */
 function dateRange(start: string, end: string): string[] {
   const dates: string[] = [];
-  const d = new Date(start);
-  const endDate = new Date(end);
-  while (d <= endDate) {
-    dates.push(d.toISOString().split('T')[0]);
-    d.setDate(d.getDate() + 1);
+  const [sy, sm, sd] = start.split('-').map((v) => Number(v));
+  const [ey, em, ed] = end.split('-').map((v) => Number(v));
+  if (![sy, sm, sd, ey, em, ed].every((n) => Number.isInteger(n))) {
+    return dates;
+  }
+  let cur = new Date(Date.UTC(sy, sm - 1, sd));
+  const endUtc = Date.UTC(ey, em - 1, ed);
+  while (cur.getTime() <= endUtc) {
+    dates.push(
+      `${cur.getUTCFullYear()}-${pad2(cur.getUTCMonth() + 1)}-${pad2(cur.getUTCDate())}`
+    );
+    cur.setUTCDate(cur.getUTCDate() + 1);
   }
   return dates;
 }
@@ -60,8 +72,9 @@ export function computeSlots(params: ComputeSlotsParams): ComputedSlot[] {
 
   // Process each date
   for (const date of dates) {
-    // Get day of week (0 = Sunday, 6 = Saturday)
-    const dayOfWeek = new Date(date).getDay();
+    // Día de la semana del calendario (0 = domingo) coherente con YYYY-MM-DD como fecha civil
+    const [cy, cm, cd] = date.split('-').map((v) => Number(v));
+    const dayOfWeek = new Date(Date.UTC(cy, cm - 1, cd)).getUTCDay();
 
     // Get blocks for this date
     const dayBlocks = blocksInRange.filter(b => b.date === date);

@@ -7,6 +7,7 @@ import { BlocksService } from './blocks.service';
 import { computeSlots, rankSlots, ComputedSlot, AvailabilityBlock, BlockedWindow } from '@domain/index';
 import { getSupabaseClient } from '../config/supabase.config';
 import { environment } from '../../../environments/environment';
+import { dateToLocalISOString } from '../utils/date-format';
 
 /** Extrae project ref de la URL de Supabase (ej. ehtienppxcycyaxlyjln) */
 function getProjectRef(): string {
@@ -145,15 +146,26 @@ export class PlannerService {
             created_at: b.created_at
           }));
 
-          // Compute slots (solo dentro del rango planning)
+          // Ventana efectiva: igual que bloques/UI — no mostrar ni calcular días ya pasados
+          // aunque planning_start_date en BD siga siendo antiguo hasta que el host guarde de nuevo.
+          const today = dateToLocalISOString(new Date());
+          const effectiveStart =
+            group.planning_start_date >= today ? group.planning_start_date : today;
+          const effectiveEnd = group.planning_end_date;
+
+          if (effectiveStart > effectiveEnd) {
+            return [];
+          }
+
+          // Compute slots (solo dentro del rango planning efectivo)
           // slotSize = duración mínima de reunión del grupo (ej. 60 min) para que cada slot sea bookable
           const slotSize = group.min_meeting_duration_min ?? 30;
           const slots = computeSlots({
             members: domainMembers,
             availability_blocks: domainBlocks,
             blocked_windows: blockedWindows,
-            planning_start_date: group.planning_start_date,
-            planning_end_date: group.planning_end_date,
+            planning_start_date: effectiveStart,
+            planning_end_date: effectiveEnd,
             buffer_before_work_min: group.buffer_before_work_min,
             slotSize,
             yellow_threshold: group.yellow_threshold
